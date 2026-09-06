@@ -1,0 +1,148 @@
+// use prisma-next
+
+enum UserRole {
+  admin
+  mate
+  renter
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  mate     Mate?
+  bookings Booking[]
+  reviews  Review[]
+}
+
+model Mate {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @unique
+  age        Int?
+  bio        String?
+  provinceId Int
+  districtId Int
+  hourlyRate Decimal
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now())
+
+  user       User            @relation(fields: [userId], references: [id])
+  province   Province        @relation(fields: [provinceId], references: [id])
+  district   District        @relation(fields: [districtId], references: [id])
+  activities MateActivity[]
+  interests  MateInterest[]
+  bookings   Booking[]
+  reviews    Review[]
+}
+
+model Province {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+
+  districts District[]
+  mates     Mate[]
+}
+
+model District {
+  id         Int      @id @default(autoincrement())
+  provinceId Int
+  name       String
+
+  province Province @relation(fields: [provinceId], references: [id])
+  mates    Mate[]
+}
+
+model Activity {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  mates    MateActivity[]
+  bookings Booking[]
+}
+
+model Interest {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  mates MateInterest[]
+}
+
+model MateActivity {
+  mateId     Int
+  activityId Int
+
+  mate     Mate     @relation(fields: [mateId], references: [id])
+  activity Activity @relation(fields: [activityId], references: [id])
+
+  @@id([mateId, activityId])
+}
+
+model MateInterest {
+  mateId     Int
+  interestId Int
+
+  mate     Mate     @relation(fields: [mateId], references: [id])
+  interest Interest @relation(fields: [interestId], references: [id])
+
+  @@id([mateId, interestId])
+}
+
+model Booking {
+  id         Int           @id @default(autoincrement())
+  renterId   Int
+  mateId     Int
+  activityId Int
+  date       DateTime
+  startTime  DateTime
+  endTime    DateTime
+  totalPrice Decimal
+  status     BookingStatus
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @default(now())
+
+  renter   User     @relation(fields: [renterId], references: [id])
+  mate     Mate     @relation(fields: [mateId], references: [id])
+  activity Activity @relation(fields: [activityId], references: [id])
+  payment  Payment?
+  review   Review?
+}
+
+model Payment {
+  id                    Int      @id @default(autoincrement())
+  bookingId             Int      @unique
+  amount                Decimal
+  status                String
+  stripePaymentIntentId String   @unique
+  paidAt                DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  bookingId Int      @unique
+  renterId  Int
+  mateId    Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  renter  User    @relation(fields: [renterId], references: [id])
+  mate    Mate    @relation(fields: [mateId], references: [id])
+}
