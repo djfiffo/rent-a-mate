@@ -118,13 +118,9 @@ export class AuthService {
 		};
 	}
 
-	private readonly accessSecret =
-		process.env['JWT_ACCESS_SECRET'] ??
-		process.env['JWT_SECRET'] ??
-		'development-access-secret-change-me';
+	private readonly accessSecret = process.env['JWT_ACCESS_SECRET'];
 
-	private readonly refreshSecret =
-		process.env['JWT_REFRESH_SECRET'] ?? 'development-refresh-secret-change-me';
+	private readonly refreshSecret = process.env['JWT_REFRESH_SECRET'];
 
 	private async issueTokenPair(userId: number, role: string) {
 		const accessJti = randomUUID();
