@@ -1,7 +1,8 @@
-import { Body, Controller, Post, Req, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -9,6 +10,7 @@ type AuthenticatedRequest = Request & {
   };
 };
 
+@UseGuards(JwtAuthGuard)
 @Controller('bookings')
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
