@@ -6,7 +6,10 @@ import { AuthService } from './auth.service';
 @Module({
   imports: [
     JwtModule.register({
-      secret: process.env['JWT_SECRET'] ?? 'development-secret-change-me',
+      secret:
+        process.env['JWT_ACCESS_SECRET'] ??
+        process.env['JWT_SECRET'] ??
+        'development-access-secret-change-me',
       signOptions: { expiresIn: '15m' },
     }),
   ],
