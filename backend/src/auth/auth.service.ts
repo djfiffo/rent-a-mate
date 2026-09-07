@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Temporal } from '@js-temporal/polyfill';
 import bcrypt from 'bcrypt';
 import { createHash, randomUUID } from 'node:crypto';
 import { db } from '../prisma/db.js';
@@ -192,8 +193,8 @@ export class AuthService {
 	private isRefreshTokenUsable(
 		storedToken: {
 			tokenHash: string;
-			revokedAt: Date | null;
-			expiresAt: Date;
+			revokedAt: Temporal.Instant | null;
+			expiresAt: Temporal.Instant;
 			userId: number;
 		},
 		rawToken: string,
@@ -202,7 +203,7 @@ export class AuthService {
 		return (
 			storedToken.tokenHash === this.hashToken(rawToken) &&
 			!storedToken.revokedAt &&
-			storedToken.expiresAt > new Date() &&
+			Temporal.Instant.compare(storedToken.expiresAt, Temporal.Now.instant()) > 0 &&
 			storedToken.userId === userId
 		);
 	}
@@ -217,7 +218,9 @@ export class AuthService {
 			userId,
 			tokenHash: this.hashToken(refreshToken),
 			jti,
-			expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+			expiresAt: Temporal.Now.instant().add({
+				seconds: 30 * 24 * 60 * 60,
+			}),
 		});
 	}
 
@@ -225,7 +228,7 @@ export class AuthService {
 		return tx.orm.public.RefreshToken
 			.where({ jti, revokedAt: null })
 			.update({
-				revokedAt: new Date(),
+				revokedAt: Temporal.Now.instant(),
 				replacedByJti,
 			});
 	}

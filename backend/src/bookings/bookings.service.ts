@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Temporal } from '@js-temporal/polyfill';
 
 import { db } from '../prisma/db.js';
 
@@ -30,11 +31,11 @@ export class BookingsService {
     const startTime = this.parseDateTime(dto.date, dto.startTime);
     const endTime = this.parseDateTime(dto.date, dto.endTime);
 
-    if (startTime >= endTime) {
+    if (Temporal.Instant.compare(startTime, endTime) >= 0) {
       throw new BadRequestException('startTime must be before endTime');
     }
 
-    if (startTime <= new Date()) {
+    if (Temporal.Instant.compare(startTime, Temporal.Now.instant()) <= 0) {
       throw new BadRequestException('Booking time must be in the future');
     }
 
@@ -48,7 +49,8 @@ export class BookingsService {
       throw new ConflictException('Mate is already booked for this time');
     }
 
-    const durationInHours = (endTime.getTime() - startTime.getTime()) / 3_600_000;
+    const durationInHours =
+      (endTime.epochMilliseconds - startTime.epochMilliseconds) / 3_600_000;
     const totalPrice = (Number(mate.hourlyRate) * durationInHours).toFixed(2);
 
     const booking = await db.orm.public.Booking.create({
@@ -65,26 +67,37 @@ export class BookingsService {
     return booking;
   }
 
-  private parseDate(value: string): Date {
+  private parseDate(value: string): Temporal.Instant {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       throw new BadRequestException('date must use YYYY-MM-DD format');
     }
 
-    const date = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(date.getTime())) {
+    try {
+      return Temporal.PlainDate.from(value)
+        .toZonedDateTime({
+          timeZone: 'Asia/Bangkok',
+          plainTime: '00:00',
+        })
+        .toInstant();
+    } catch {
       throw new BadRequestException('date is invalid');
     }
-
-    return date;
   }
 
-  private parseDateTime(date: string, time: string): Date {
-    const value = /^\d{2}:\d{2}$/.test(time) ? `${date}T${time}:00` : time;
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
+  private parseDateTime(date: string, time: string): Temporal.Instant {
+    try {
+      if (/^\d{2}:\d{2}$/.test(time)) {
+        return Temporal.PlainDate.from(date)
+          .toZonedDateTime({
+            timeZone: 'Asia/Bangkok',
+            plainTime: `${time}:00`,
+          })
+          .toInstant();
+      }
+
+      return Temporal.Instant.from(time);
+    } catch {
       throw new BadRequestException('startTime and endTime must be valid date-time values');
     }
-
-    return parsed;
   }
 }
