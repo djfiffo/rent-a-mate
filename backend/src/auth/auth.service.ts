@@ -19,7 +19,7 @@ export class AuthService {
 		const user = await db.orm.public.User.create({
 			name: dto.name,
 			email: dto.email,
-			password: dto.password,
+			password,
 			role: dto.role,
 		});
 

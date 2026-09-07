@@ -33,8 +33,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'461a13d0e52d4082f2c97ff8785ded6ce37e2f56aacadbb3ec35d856465e6df5'>;
-export type ExecutionHash = ExecutionHashBase<string>;
+  StorageHashBase<'60b8efe5be3aabe773ab9c5412307fcc3aa8cf9a3e69e12c665fa378883ab28f'>;
+export type ExecutionHash =
+  ExecutionHashBase<'2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -274,6 +275,8 @@ export type FieldOutputTypes = {
       readonly provinceId: CodecTypes['pg/int4@1']['output'];
       readonly districtId: CodecTypes['pg/int4@1']['output'];
       readonly hourlyRate: CodecTypes['pg/numeric@1']['output'];
+      readonly profileImageUrl: CodecTypes['pg/text@1']['output'] | null;
+      readonly profileImageKey: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
@@ -298,6 +301,16 @@ export type FieldOutputTypes = {
     readonly Province: {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
+    };
+    readonly RefreshToken: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly userId: CodecTypes['pg/int4@1']['output'];
+      readonly tokenHash: CodecTypes['pg/text@1']['output'];
+      readonly jti: CodecTypes['pg/text@1']['output'];
+      readonly expiresAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly replacedByJti: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly Review: {
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -356,6 +369,8 @@ export type FieldInputTypes = {
       readonly provinceId: CodecTypes['pg/int4@1']['input'];
       readonly districtId: CodecTypes['pg/int4@1']['input'];
       readonly hourlyRate: CodecTypes['pg/numeric@1']['input'];
+      readonly profileImageUrl: CodecTypes['pg/text@1']['input'] | null;
+      readonly profileImageKey: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
@@ -380,6 +395,16 @@ export type FieldInputTypes = {
     readonly Province: {
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'];
+    };
+    readonly RefreshToken: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly userId: CodecTypes['pg/int4@1']['input'];
+      readonly tokenHash: CodecTypes['pg/text@1']['input'];
+      readonly jti: CodecTypes['pg/text@1']['input'];
+      readonly expiresAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly revokedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly replacedByJti: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly Review: {
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -437,6 +462,8 @@ export type StorageColumnTypes = {
       readonly districtId: CodecTypes['pg/int4@1']['output'];
       readonly hourlyRate: CodecTypes['pg/numeric@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly profileImageKey: CodecTypes['pg/text@1']['output'] | null;
+      readonly profileImageUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly provinceId: CodecTypes['pg/int4@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly userId: CodecTypes['pg/int4@1']['output'];
@@ -462,6 +489,16 @@ export type StorageColumnTypes = {
     readonly province: {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
+    };
+    readonly refresh_tokens: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly expiresAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly jti: CodecTypes['pg/text@1']['output'];
+      readonly replacedByJti: CodecTypes['pg/text@1']['output'] | null;
+      readonly revokedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly tokenHash: CodecTypes['pg/text@1']['output'];
+      readonly userId: CodecTypes['pg/int4@1']['output'];
     };
     readonly review: {
       readonly bookingId: CodecTypes['pg/int4@1']['output'];
@@ -519,6 +556,8 @@ export type StorageColumnInputTypes = {
       readonly districtId: CodecTypes['pg/int4@1']['input'];
       readonly hourlyRate: CodecTypes['pg/numeric@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly profileImageKey: CodecTypes['pg/text@1']['input'] | null;
+      readonly profileImageUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly provinceId: CodecTypes['pg/int4@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly userId: CodecTypes['pg/int4@1']['input'];
@@ -544,6 +583,16 @@ export type StorageColumnInputTypes = {
     readonly province: {
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'];
+    };
+    readonly refresh_tokens: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly expiresAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly jti: CodecTypes['pg/text@1']['input'];
+      readonly replacedByJti: CodecTypes['pg/text@1']['input'] | null;
+      readonly revokedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly tokenHash: CodecTypes['pg/text@1']['input'];
+      readonly userId: CodecTypes['pg/int4@1']['input'];
     };
     readonly review: {
       readonly bookingId: CodecTypes['pg/int4@1']['input'];
@@ -841,6 +890,16 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/numeric@1';
                   readonly nullable: false;
                 };
+                readonly profileImageUrl: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly profileImageKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
                   readonly codecId: 'pg/timestamptz-temporal@1';
@@ -1113,6 +1172,81 @@ type ContractBase = Omit<
               indexes: readonly [];
               foreignKeys: readonly [];
             };
+            readonly refresh_tokens: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly userId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly tokenHash: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly jti: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly expiresAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                };
+                readonly revokedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly replacedByJti: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['jti'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'refresh_tokens_userId_expiresAt_idx_9721b56d';
+                  readonly prefix: 'refresh_tokens_userId_expiresAt_idx';
+                  readonly columns: readonly ['userId', 'expiresAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'refresh_tokens_userId_idx_a489d58a';
+                  readonly prefix: 'refresh_tokens_userId_idx';
+                  readonly columns: readonly ['userId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'refresh_tokens';
+                    readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
             readonly review: {
               columns: {
                 readonly id: {
@@ -1304,6 +1438,10 @@ type ContractBase = Omit<
     readonly booking: { readonly namespace: 'public' & NamespaceId; readonly model: 'Booking' };
     readonly payment: { readonly namespace: 'public' & NamespaceId; readonly model: 'Payment' };
     readonly review: { readonly namespace: 'public' & NamespaceId; readonly model: 'Review' };
+    readonly refresh_tokens: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'RefreshToken';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -1593,6 +1731,14 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/numeric@1' };
               };
+              readonly profileImageUrl: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly profileImageKey: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -1695,6 +1841,8 @@ type ContractBase = Omit<
                 readonly provinceId: { readonly column: 'provinceId' };
                 readonly districtId: { readonly column: 'districtId' };
                 readonly hourlyRate: { readonly column: 'hourlyRate' };
+                readonly profileImageUrl: { readonly column: 'profileImageUrl' };
+                readonly profileImageKey: { readonly column: 'profileImageKey' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };
@@ -1895,6 +2043,75 @@ type ContractBase = Omit<
               };
             };
           };
+          readonly RefreshToken: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly tokenHash: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly jti: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly expiresAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly revokedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly replacedByJti: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'refresh_tokens';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly userId: { readonly column: 'userId' };
+                readonly tokenHash: { readonly column: 'tokenHash' };
+                readonly jti: { readonly column: 'jti' };
+                readonly expiresAt: { readonly column: 'expiresAt' };
+                readonly revokedAt: { readonly column: 'revokedAt' };
+                readonly replacedByJti: { readonly column: 'replacedByJti' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
           readonly Review: {
             readonly fields: {
               readonly id: {
@@ -2037,6 +2254,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['userId'];
                 };
               };
+              readonly refreshTokens: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'RefreshToken';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
+                };
+              };
               readonly reviews: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -2105,6 +2333,21 @@ type ContractBase = Omit<
     };
   };
   readonly extensions: {};
+  readonly execution: {
+    readonly executionHash: ExecutionHash;
+    readonly mutations: {
+      readonly defaults: readonly [
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'refresh_tokens';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+      ];
+    };
+  };
   readonly meta: {};
 
   readonly profileHash: ProfileHash;
