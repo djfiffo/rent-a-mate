@@ -1,8 +1,8 @@
 import { Body, Controller, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { BookingsService } from './bookings.service';
-import { CreateBookingDto } from './dto/create-booking.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { BookingsService } from './bookings.service.js';
+import { CreateBookingDto } from './dto/create-booking.dto.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 
 type AuthenticatedRequest = Request & {
   user?: {

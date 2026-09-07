@@ -2,9 +2,9 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import { createHash, randomUUID } from 'node:crypto';
-import { db } from '../prisma/db';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
+import { db } from '../prisma/db.js';
+import { LoginDto } from './dto/login.dto.js';
+import { RegisterDto } from './dto/register.dto.js';
 
 type AuthTokenPayload = {
 	sub: number;
