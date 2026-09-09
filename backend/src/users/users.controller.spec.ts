@@ -1,5 +1,7 @@
+import 'reflect-metadata';
 import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { UsersController } from './users.controller.js';
 import type { SafeUser } from './users.types.js';
 
@@ -30,5 +32,13 @@ describe('UsersController', () => {
 
     await expect(controller.getProfile()).rejects.toBeInstanceOf(UnauthorizedException);
     expect(service.getProfile).not.toHaveBeenCalled();
+  });
+
+  it('protects all user routes with the JWT guard', () => {
+    const guards = Reflect.getMetadata('__guards__', UsersController) as Array<
+      new (...args: never[]) => unknown
+    >;
+
+    expect(guards).toContain(JwtAuthGuard);
   });
 });
