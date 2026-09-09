@@ -2,6 +2,7 @@ import type { db } from '../prisma/db.js';
 
 export interface AuthUser {
   id: number;
+  role?: 'renter' | 'mate' | 'admin';
 }
 
 export type UserClient = typeof db.orm.public.User;

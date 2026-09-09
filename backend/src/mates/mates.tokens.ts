@@ -1,0 +1,1 @@
+export const MATES_DATABASE_TOKEN = Symbol('MATES_DATABASE_TOKEN');

@@ -5,6 +5,7 @@ import { AppService } from './app.service.js';
 import { BookingsModule } from './bookings/bookings.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { UsersModule } from './users/users.module.js';
+import { MatesModule } from './mates/mates.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -27,6 +28,7 @@ const observeImports =
     BookingsModule,
     AuthModule,
     UsersModule,
+    MatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
