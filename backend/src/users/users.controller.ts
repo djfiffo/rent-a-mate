@@ -4,7 +4,9 @@ import {
   Get,
   Patch,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import type { AuthUser, SafeUser } from './users.types.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import { ChangeEmailDto, ChangePasswordDto, UpdateProfileDto } from './dto/index.js';
@@ -17,6 +19,7 @@ interface ApiResponse<T> {
 }
 
 @Controller('users/me')
+@UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
