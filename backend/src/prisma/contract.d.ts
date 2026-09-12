@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'60b8efe5be3aabe773ab9c5412307fcc3aa8cf9a3e69e12c665fa378883ab28f'>;
+  StorageHashBase<'7dee2168b7b64b776eb02be19e4017824d954b5687b9bf1f5c4ff8373d0d2fb7'>;
 export type ExecutionHash =
   ExecutionHashBase<'2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8'>;
 export type ProfileHash =
@@ -279,10 +279,21 @@ export type FieldOutputTypes = {
       readonly profileImageKey: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly isActive: CodecTypes['pg/bool@1']['output'];
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['output'];
     };
     readonly MateActivity: {
       readonly mateId: CodecTypes['pg/int4@1']['output'];
       readonly activityId: CodecTypes['pg/int4@1']['output'];
+    };
+    readonly MateAvailability: {
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly mateId: CodecTypes['pg/int4@1']['output'];
+      readonly dayOfWeek: CodecTypes['pg/int4@1']['output'];
+      readonly startTime: CodecTypes['pg/text@1']['output'];
+      readonly endTime: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly MateInterest: {
       readonly mateId: CodecTypes['pg/int4@1']['output'];
@@ -373,10 +384,21 @@ export type FieldInputTypes = {
       readonly profileImageKey: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly isActive: CodecTypes['pg/bool@1']['input'];
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['input'];
     };
     readonly MateActivity: {
       readonly mateId: CodecTypes['pg/int4@1']['input'];
       readonly activityId: CodecTypes['pg/int4@1']['input'];
+    };
+    readonly MateAvailability: {
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly mateId: CodecTypes['pg/int4@1']['input'];
+      readonly dayOfWeek: CodecTypes['pg/int4@1']['input'];
+      readonly startTime: CodecTypes['pg/text@1']['input'];
+      readonly endTime: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly MateInterest: {
       readonly mateId: CodecTypes['pg/int4@1']['input'];
@@ -459,9 +481,11 @@ export type StorageColumnTypes = {
       readonly age: CodecTypes['pg/int4@1']['output'] | null;
       readonly bio: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['output'];
       readonly districtId: CodecTypes['pg/int4@1']['output'];
       readonly hourlyRate: CodecTypes['pg/numeric@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly isActive: CodecTypes['pg/bool@1']['output'];
       readonly profileImageKey: CodecTypes['pg/text@1']['output'] | null;
       readonly profileImageUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly provinceId: CodecTypes['pg/int4@1']['output'];
@@ -471,6 +495,15 @@ export type StorageColumnTypes = {
     readonly mateActivity: {
       readonly activityId: CodecTypes['pg/int4@1']['output'];
       readonly mateId: CodecTypes['pg/int4@1']['output'];
+    };
+    readonly mateAvailability: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly dayOfWeek: CodecTypes['pg/int4@1']['output'];
+      readonly endTime: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly mateId: CodecTypes['pg/int4@1']['output'];
+      readonly startTime: CodecTypes['pg/text@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly mateInterest: {
       readonly interestId: CodecTypes['pg/int4@1']['output'];
@@ -553,9 +586,11 @@ export type StorageColumnInputTypes = {
       readonly age: CodecTypes['pg/int4@1']['input'] | null;
       readonly bio: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['input'];
       readonly districtId: CodecTypes['pg/int4@1']['input'];
       readonly hourlyRate: CodecTypes['pg/numeric@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly isActive: CodecTypes['pg/bool@1']['input'];
       readonly profileImageKey: CodecTypes['pg/text@1']['input'] | null;
       readonly profileImageUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly provinceId: CodecTypes['pg/int4@1']['input'];
@@ -565,6 +600,15 @@ export type StorageColumnInputTypes = {
     readonly mateActivity: {
       readonly activityId: CodecTypes['pg/int4@1']['input'];
       readonly mateId: CodecTypes['pg/int4@1']['input'];
+    };
+    readonly mateAvailability: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly dayOfWeek: CodecTypes['pg/int4@1']['input'];
+      readonly endTime: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly mateId: CodecTypes['pg/int4@1']['input'];
+      readonly startTime: CodecTypes['pg/text@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly mateInterest: {
       readonly interestId: CodecTypes['pg/int4@1']['input'];
@@ -912,6 +956,20 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                 };
+                readonly isActive: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', true>;
+                  };
+                };
+                readonly deactiveAt: {
+                  readonly nativeType: 'date';
+                  readonly codecId: 'pg/date-temporal@1';
+                  readonly nullable: false;
+                };
               };
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [{ readonly columns: readonly ['userId'] }];
@@ -1019,6 +1077,77 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'activity';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly mateAvailability: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'function';
+                    readonly expression: 'autoincrement()';
+                  };
+                };
+                readonly mateId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly dayOfWeek: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly startTime: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly endTime: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [
+                { readonly columns: readonly ['mateId', 'dayOfWeek', 'startTime', 'endTime'] },
+              ];
+              indexes: readonly [
+                {
+                  readonly name: 'mateAvailability_mateId_idx_99af79ac';
+                  readonly prefix: 'mateAvailability_mateId_idx';
+                  readonly columns: readonly ['mateId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'mateAvailability';
+                    readonly columns: readonly ['mateId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'mate';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -1423,6 +1552,10 @@ type ContractBase = Omit<
   readonly roots: {
     readonly user: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
     readonly mate: { readonly namespace: 'public' & NamespaceId; readonly model: 'Mate' };
+    readonly mateAvailability: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'MateAvailability';
+    };
     readonly province: { readonly namespace: 'public' & NamespaceId; readonly model: 'Province' };
     readonly district: { readonly namespace: 'public' & NamespaceId; readonly model: 'District' };
     readonly activity: { readonly namespace: 'public' & NamespaceId; readonly model: 'Activity' };
@@ -1753,12 +1886,31 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-temporal@1';
                 };
               };
+              readonly isActive: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly deactiveAt: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/date-temporal@1' };
+              };
             };
             readonly relations: {
               readonly activities: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'MateActivity';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['mateId'];
+                };
+              };
+              readonly availability: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'MateAvailability';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -1845,6 +1997,8 @@ type ContractBase = Omit<
                 readonly profileImageKey: { readonly column: 'profileImageKey' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
+                readonly isActive: { readonly column: 'isActive' };
+                readonly deactiveAt: { readonly column: 'deactiveAt' };
               };
             };
           };
@@ -1886,6 +2040,67 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly mateId: { readonly column: 'mateId' };
                 readonly activityId: { readonly column: 'activityId' };
+              };
+            };
+          };
+          readonly MateAvailability: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly mateId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly dayOfWeek: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly startTime: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly endTime: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly mate: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Mate' };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['mateId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'mateAvailability';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly mateId: { readonly column: 'mateId' };
+                readonly dayOfWeek: { readonly column: 'dayOfWeek' };
+                readonly startTime: { readonly column: 'startTime' };
+                readonly endTime: { readonly column: 'endTime' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
               };
             };
           };
