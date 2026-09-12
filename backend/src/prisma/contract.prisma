@@ -25,6 +25,8 @@ model User {
   mate     Mate?
   bookings Booking[]
   reviews  Review[]
+
+  refreshTokens RefreshToken[]
 }
 
 model Mate {
@@ -35,6 +37,8 @@ model Mate {
   provinceId Int
   districtId Int
   hourlyRate Decimal
+  profileImageUrl String?
+  profileImageKey String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now())
 
@@ -145,4 +149,20 @@ model Review {
   booking Booking @relation(fields: [bookingId], references: [id])
   renter  User    @relation(fields: [renterId], references: [id])
   mate    Mate    @relation(fields: [mateId], references: [id])
+}
+
+model RefreshToken {
+  id            String    @id @default(uuid())
+  userId        Int
+  tokenHash     String
+  jti           String    @unique
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  replacedByJti String?
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, expiresAt])
+  @@map("refresh_tokens")
 }
