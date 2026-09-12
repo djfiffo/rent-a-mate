@@ -28,6 +28,10 @@
       "model": "MateActivity",
       "namespace": "public"
     },
+    "mateAvailability": {
+      "model": "MateAvailability",
+      "namespace": "public"
+    },
     "mateInterest": {
       "model": "MateInterest",
       "namespace": "public"
@@ -504,6 +508,13 @@
                   "kind": "scalar"
                 }
               },
+              "deactiveAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/date-temporal@1",
+                  "kind": "scalar"
+                }
+              },
               "districtId": {
                 "nullable": false,
                 "type": {
@@ -522,6 +533,13 @@
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "isActive": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
                   "kind": "scalar"
                 }
               },
@@ -574,6 +592,21 @@
                 },
                 "to": {
                   "model": "MateActivity",
+                  "namespace": "public"
+                }
+              },
+              "availability": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "mateId"
+                  ]
+                },
+                "to": {
+                  "model": "MateAvailability",
                   "namespace": "public"
                 }
               },
@@ -679,6 +712,9 @@
                 "createdAt": {
                   "column": "createdAt"
                 },
+                "deactiveAt": {
+                  "column": "deactiveAt"
+                },
                 "districtId": {
                   "column": "districtId"
                 },
@@ -687,6 +723,9 @@
                 },
                 "id": {
                   "column": "id"
+                },
+                "isActive": {
+                  "column": "isActive"
                 },
                 "profileImageKey": {
                   "column": "profileImageKey"
@@ -768,6 +807,103 @@
               },
               "namespaceId": "public",
               "table": "mateActivity"
+            }
+          },
+          "MateAvailability": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "dayOfWeek": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "endTime": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "mateId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "startTime": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "mate": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "mateId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Mate",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "dayOfWeek": {
+                  "column": "dayOfWeek"
+                },
+                "endTime": {
+                  "column": "endTime"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "mateId": {
+                  "column": "mateId"
+                },
+                "startTime": {
+                  "column": "startTime"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "mateAvailability"
             }
           },
           "MateInterest": {
@@ -1710,6 +1846,11 @@
                   "nativeType": "timestamptz",
                   "nullable": false
                 },
+                "deactiveAt": {
+                  "codecId": "pg/date-temporal@1",
+                  "nativeType": "date",
+                  "nullable": false
+                },
                 "districtId": {
                   "codecId": "pg/int4@1",
                   "nativeType": "int4",
@@ -1727,6 +1868,15 @@
                     "kind": "function"
                   },
                   "nativeType": "int4",
+                  "nullable": false
+                },
+                "isActive": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
                   "nullable": false
                 },
                 "profileImageKey": {
@@ -1912,6 +2062,101 @@
                 ]
               },
               "uniques": []
+            },
+            "mateAvailability": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "dayOfWeek": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "endTime": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "mateId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "startTime": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "mateId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "mateAvailability"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "mate"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "mateId"
+                  ],
+                  "name": "mateAvailability_mateId_idx_99af79ac",
+                  "prefix": "mateAvailability_mateId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "mateId",
+                    "dayOfWeek",
+                    "startTime",
+                    "endTime"
+                  ]
+                }
+              ]
             },
             "mateInterest": {
               "columns": {
@@ -2446,7 +2691,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "60b8efe5be3aabe773ab9c5412307fcc3aa8cf9a3e69e12c665fa378883ab28f"
+    "storageHash": "7dee2168b7b64b776eb02be19e4017824d954b5687b9bf1f5c4ff8373d0d2fb7"
   },
   "execution": {
     "executionHash": "2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8",
