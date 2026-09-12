@@ -42,6 +42,11 @@ model Mate {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now())
 
+  isActive Boolean @default(true)
+  deactiveAt Date
+
+  availability MateAvailability[]
+
   user       User            @relation(fields: [userId], references: [id])
   province   Province        @relation(fields: [provinceId], references: [id])
   district   District        @relation(fields: [districtId], references: [id])
@@ -49,6 +54,20 @@ model Mate {
   interests  MateInterest[]
   bookings   Booking[]
   reviews    Review[]
+}
+
+model MateAvailability {
+  id        Int      @id @default(autoincrement())
+  mateId    Int
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  mate Mate @relation(fields: [mateId], references: [id], onDelete: Cascade)
+
+  @@unique([mateId, dayOfWeek, startTime, endTime])
 }
 
 model Province {
