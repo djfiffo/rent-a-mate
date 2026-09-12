@@ -50,6 +50,7 @@ interface MateOrm {
   Interest: Model<{ id: number; name: string }>;
   MateActivity: Model<{ mateId: number; activityId: number }>;
   MateInterest: Model<{ mateId: number; interestId: number }>;
+  MateAvailability: Model<MateAvailabilityRecord>;
 }
 
 export interface MateDatabase {
@@ -64,3 +65,14 @@ export interface MateUpdate {
   provinceId?: number;
   districtId?: number;
 }
+
+export interface MateAvailabilityRecord {
+  id: number;
+  mateId: number;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  createdAt: unknown;
+  updatedAt: unknown;
+}
+
