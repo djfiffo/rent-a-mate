@@ -9,7 +9,7 @@ import { MATES_DATABASE_TOKEN } from './mates.tokens.js';
 @Module({
   imports: [AuthModule],
   controllers: [MatesController],
-  providers: [MatesService, { provide: MATES_DATABASE_TOKEN, useValue: db }],
+  providers: [MatesService, MateAvailabilityService, { provide: MATES_DATABASE_TOKEN, useValue: db }],
   exports: [MateAvailabilityService],
 })
 export class MatesModule {}
