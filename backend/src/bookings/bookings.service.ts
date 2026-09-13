@@ -1,30 +1,70 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
 
-import { db } from '../prisma/db.js';
-
+import { MateAvailabilityService } from '../mates/mate-availability.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
+import type { AuthUser } from '../users/users.types.js';
+import type { PaginatedResult } from '../admin/admin.types.js';
+import { BOOKINGS_DATABASE_TOKEN } from './bookings.tokens.js';
+import type {
+  BookingDatabase,
+  BookingDetail,
+  BookingRecord,
+  BookingStatus,
+  MateRecordForBooking,
+} from './bookings.types.js';
 import { CreateBookingDto } from './dto/create-booking.dto.js';
+import { ListBookingsQueryDto } from './dto/list-bookings-query.dto.js';
+
+const TIMEZONE = 'Asia/Bangkok';
+const MIN_DURATION_MINUTES = 60;
+const MAX_DURATION_MINUTES = 480;
+const DURATION_STEP_MINUTES = 30;
+
+export interface CreateBookingResult {
+  id: BookingRecord['id'];
+  status: BookingRecord['status'];
+  totalPrice: BookingRecord['totalPrice'];
+}
 
 @Injectable()
 export class BookingsService {
-  async create(renterId: number, dto: CreateBookingDto) {
-    const mate = await db.orm.public.Mate.where({ id: dto.mateId }).first();
+  constructor(
+    @Inject(BOOKINGS_DATABASE_TOKEN) private readonly database: BookingDatabase,
+    private readonly mateAvailabilityService: MateAvailabilityService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
+
+  async create(renterId: number, dto: CreateBookingDto): Promise<CreateBookingResult> {
+    const mate = await this.database.orm.public.Mate.where({ id: dto.mateId }).first();
     if (!mate) {
       throw new NotFoundException('Mate not found');
     }
+    if (mate.userId === renterId) {
+      throw new BadRequestException('You cannot book yourself');
+    }
+    if (!mate.isActive) {
+      throw new UnprocessableEntityException('Mate profile is not active');
+    }
 
-    const activity = await db.orm.public.Activity.where({ id: dto.activityId }).first();
+    const activity = await this.database.orm.public.Activity.where({ id: dto.activityId }).first();
     if (!activity) {
       throw new NotFoundException('Activity not found');
     }
 
-    if (mate.userId === renterId) {
-      throw new BadRequestException('You cannot book yourself');
+    const mateActivity = await this.database.orm.public.MateActivity
+      .where({ mateId: dto.mateId, activityId: dto.activityId })
+      .first();
+    if (!mateActivity) {
+      throw new UnprocessableEntityException('Activity is not listed on this mate profile');
     }
 
     const date = this.parseDate(dto.date);
@@ -34,37 +74,334 @@ export class BookingsService {
     if (Temporal.Instant.compare(startTime, endTime) >= 0) {
       throw new BadRequestException('startTime must be before endTime');
     }
-
     if (Temporal.Instant.compare(startTime, Temporal.Now.instant()) <= 0) {
-      throw new BadRequestException('Booking time must be in the future');
+      throw new UnprocessableEntityException('Booking time must be in the future');
     }
 
-    const overlappingBooking = await db.orm.public.Booking
-      .where({ mateId: dto.mateId, date })
-      .where((booking) => booking.startTime.lt(endTime))
-      .where((booking) => booking.endTime.gt(startTime))
-      .first();
-
-    if (overlappingBooking) {
-      throw new ConflictException('Mate is already booked for this time');
+    const durationMinutes = (endTime.epochMilliseconds - startTime.epochMilliseconds) / 60_000;
+    if (
+      durationMinutes % DURATION_STEP_MINUTES !== 0 ||
+      durationMinutes < MIN_DURATION_MINUTES ||
+      durationMinutes > MAX_DURATION_MINUTES
+    ) {
+      throw new UnprocessableEntityException(
+        'Booking duration must be in 30-minute increments between 1 and 8 hours',
+      );
     }
 
-    const durationInHours =
-      (endTime.epochMilliseconds - startTime.epochMilliseconds) / 3_600_000;
-    const totalPrice = (Number(mate.hourlyRate) * durationInHours).toFixed(2);
+    const isAvailable = await this.mateAvailabilityService.isWithinAvailability(
+      dto.mateId,
+      Temporal.PlainDate.from(dto.date),
+      dto.startTime,
+      dto.endTime,
+    );
+    if (!isAvailable) {
+      throw new UnprocessableEntityException("Requested time is outside the mate's availability");
+    }
 
-    const booking = await db.orm.public.Booking.create({
-      renterId,
-      mateId: dto.mateId,
-      activityId: dto.activityId,
-      date,
-      startTime,
-      endTime,
-      totalPrice,
-      status: 'pending',
+    const dateInstant = date;
+
+    // NOTE: `db.transaction()` in this ORM version has no isolation-level
+    // option and exposes no row-locking primitives (no FOR UPDATE, no
+    // advisory locks reachable from within a transaction). The overlap
+    // check-then-create below is therefore subject to the same
+    // check-then-act race window as the rest of this codebase (e.g.
+    // MatesService.create()) under concurrent requests for the same slot;
+    // it is not a regression introduced here, just a known limitation.
+    const booking = await this.database.transaction(async (tx) => {
+      const overlapping = await tx.orm.public.Booking
+        .where({ mateId: dto.mateId, date: dateInstant })
+        .where((row) => row.status.in(['pending', 'confirmed']))
+        .where((row) => row.startTime.lt(endTime))
+        .where((row) => row.endTime.gt(startTime))
+        .first();
+
+      if (overlapping) {
+        throw new ConflictException('Mate is already booked for this time');
+      }
+
+      const durationHours = durationMinutes / 60;
+      const totalPrice = (Number(mate.hourlyRate) * durationHours).toFixed(2);
+
+      const created = await tx.orm.public.Booking.create({
+        renterId,
+        mateId: dto.mateId,
+        activityId: dto.activityId,
+        date: dateInstant,
+        startTime,
+        endTime,
+        totalPrice,
+        status: 'pending',
+      });
+
+      await this.notificationsService.create(
+        {
+          userId: mate.userId,
+          type: 'booking_requested',
+          message: `You have a new booking request for ${dto.date} ${dto.startTime}-${dto.endTime}`,
+          bookingId: created.id,
+        },
+        tx,
+      );
+
+      return created;
     });
 
-    return booking;
+    return { id: booking.id, status: booking.status, totalPrice: booking.totalPrice };
+  }
+
+  async findMine(user: AuthUser, query: ListBookingsQueryDto): Promise<PaginatedResult<BookingDetail>> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const participantFilter = await this.buildParticipantFilter(user);
+    if (!participantFilter) {
+      return { items: [], meta: { page, limit, total: 0, totalPages: 0 } };
+    }
+
+    const filters = query.status ? { ...participantFilter, status: query.status } : participantFilter;
+    const all = await this.database.orm.public.Booking.where(filters).all();
+
+    const sorted = [...all].sort((a, b) => this.toEpochMillis(b.createdAt) - this.toEpochMillis(a.createdAt));
+    const total = sorted.length;
+    const offset = (page - 1) * limit;
+    const paged = sorted.slice(offset, offset + limit);
+
+    const items = await this.toBookingDetails(paged);
+
+    return { items, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  }
+
+  async findOne(user: AuthUser, bookingId: number): Promise<BookingDetail> {
+    const { booking, mate } = await this.requireBookingWithMate(bookingId);
+    const isAdmin = user.role === 'admin';
+    const isParticipant = booking.renterId === user.id || mate.userId === user.id;
+    if (!isAdmin && !isParticipant) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const [detail] = await this.toBookingDetails([booking]);
+    return detail;
+  }
+
+  async accept(user: AuthUser, bookingId: number): Promise<BookingRecord> {
+    const { booking, mate } = await this.requireBookingWithMate(bookingId);
+    if (mate.userId !== user.id) {
+      throw new ForbiddenException('Only the mate who owns this booking can accept it');
+    }
+    if (booking.status === 'confirmed') {
+      return booking;
+    }
+    this.assertTransition(booking.status, 'pending');
+
+    return this.database.transaction(async (tx) => {
+      const updated = await tx.orm.public.Booking.where({ id: bookingId }).update({ status: 'confirmed' });
+      if (!updated) {
+        throw new NotFoundException('Booking not found');
+      }
+
+      await this.notificationsService.create(
+        {
+          userId: booking.renterId,
+          type: 'booking_confirmed',
+          message: 'Your booking request has been confirmed',
+          bookingId: booking.id,
+        },
+        tx,
+      );
+
+      return updated;
+    });
+  }
+
+  async decline(user: AuthUser, bookingId: number): Promise<BookingRecord> {
+    const { booking, mate } = await this.requireBookingWithMate(bookingId);
+    if (mate.userId !== user.id) {
+      throw new ForbiddenException('Only the mate who owns this booking can decline it');
+    }
+    if (booking.status === 'cancelled') {
+      return booking;
+    }
+    this.assertTransition(booking.status, 'pending');
+
+    return this.database.transaction(async (tx) => {
+      const updated = await tx.orm.public.Booking.where({ id: bookingId }).update({ status: 'cancelled' });
+      if (!updated) {
+        throw new NotFoundException('Booking not found');
+      }
+
+      await this.notificationsService.create(
+        {
+          userId: booking.renterId,
+          type: 'booking_declined',
+          message: 'Your booking request was declined',
+          bookingId: booking.id,
+        },
+        tx,
+      );
+
+      return updated;
+    });
+  }
+
+  async cancel(user: AuthUser, bookingId: number): Promise<BookingRecord> {
+    const { booking, mate } = await this.requireBookingWithMate(bookingId);
+    const isRenter = booking.renterId === user.id;
+    const isMateOwner = mate.userId === user.id;
+    const isAdmin = user.role === 'admin';
+    if (!isRenter && !isMateOwner && !isAdmin) {
+      throw new ForbiddenException('You are not a participant in this booking');
+    }
+    if (booking.status === 'cancelled') {
+      return booking;
+    }
+    if (booking.status !== 'pending' && booking.status !== 'confirmed') {
+      throw new UnprocessableEntityException('INVALID_BOOKING_TRANSITION');
+    }
+    if (Temporal.Instant.compare(Temporal.Now.instant(), booking.startTime) >= 0) {
+      throw new UnprocessableEntityException('Booking cannot be cancelled after its start time');
+    }
+
+    return this.database.transaction(async (tx) => {
+      const updated = await tx.orm.public.Booking.where({ id: bookingId }).update({ status: 'cancelled' });
+      if (!updated) {
+        throw new NotFoundException('Booking not found');
+      }
+
+      const recipients = new Set<number>([booking.renterId, mate.userId]);
+      recipients.delete(user.id);
+      for (const recipientId of recipients) {
+        await this.notificationsService.create(
+          {
+            userId: recipientId,
+            type: 'booking_cancelled',
+            message: 'A booking has been cancelled',
+            bookingId: booking.id,
+          },
+          tx,
+        );
+      }
+
+      return updated;
+    });
+  }
+
+  async complete(user: AuthUser, bookingId: number): Promise<BookingRecord> {
+    const { booking, mate } = await this.requireBookingWithMate(bookingId);
+    const isMateOwner = mate.userId === user.id;
+    const isAdmin = user.role === 'admin';
+    if (!isMateOwner && !isAdmin) {
+      throw new ForbiddenException('Only the mate who owns this booking or an admin can complete it');
+    }
+    if (booking.status === 'completed') {
+      return booking;
+    }
+    this.assertTransition(booking.status, 'confirmed');
+    if (Temporal.Instant.compare(Temporal.Now.instant(), booking.endTime) <= 0) {
+      throw new UnprocessableEntityException('Booking cannot be completed before its end time');
+    }
+
+    return this.database.transaction(async (tx) => {
+      const updated = await tx.orm.public.Booking.where({ id: bookingId }).update({ status: 'completed' });
+      if (!updated) {
+        throw new NotFoundException('Booking not found');
+      }
+
+      await this.notificationsService.create(
+        {
+          userId: booking.renterId,
+          type: 'booking_completed',
+          message: 'Your booking has been marked as completed',
+          bookingId: booking.id,
+        },
+        tx,
+      );
+
+      return updated;
+    });
+  }
+
+  private assertTransition(current: BookingStatus, expected: BookingStatus): void {
+    if (current !== expected) {
+      throw new UnprocessableEntityException('INVALID_BOOKING_TRANSITION');
+    }
+  }
+
+  private async requireBookingWithMate(
+    bookingId: number,
+  ): Promise<{ booking: BookingRecord; mate: MateRecordForBooking }> {
+    const booking = await this.database.orm.public.Booking.where({ id: bookingId }).first();
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const mate = await this.database.orm.public.Mate.where({ id: booking.mateId }).first();
+    if (!mate) {
+      throw new NotFoundException('Mate not found');
+    }
+
+    return { booking, mate };
+  }
+
+  private async buildParticipantFilter(user: AuthUser): Promise<Record<string, unknown> | null> {
+    if (user.role === 'mate') {
+      const mate = await this.database.orm.public.Mate.where({ userId: user.id }).first();
+      return mate ? { mateId: mate.id } : null;
+    }
+
+    return { renterId: user.id };
+  }
+
+  private async toBookingDetails(bookings: BookingRecord[]): Promise<BookingDetail[]> {
+    if (bookings.length === 0) {
+      return [];
+    }
+
+    const mateIds = [...new Set(bookings.map((booking) => booking.mateId))];
+    const activityIds = [...new Set(bookings.map((booking) => booking.activityId))];
+
+    const mates = await this.database.orm.public.Mate.where((m) => m.id.in(mateIds)).all();
+    const mateMap = new Map(mates.map((mate) => [mate.id, mate]));
+
+    const renterIds = bookings.map((booking) => booking.renterId);
+    const mateUserIds = mates.map((mate) => mate.userId);
+    const userIds = [...new Set([...renterIds, ...mateUserIds])];
+    const users = await this.database.orm.public.User.where((u) => u.id.in(userIds)).all();
+    const userMap = new Map(users.map((user) => [user.id, user]));
+
+    const activities = await this.database.orm.public.Activity.where((a) => a.id.in(activityIds)).all();
+    const activityMap = new Map(activities.map((activity) => [activity.id, activity]));
+
+    return bookings.map((booking) => {
+      const mate = mateMap.get(booking.mateId);
+      const mateUser = mate ? userMap.get(mate.userId) : undefined;
+      const renterUser = userMap.get(booking.renterId);
+      const activity = activityMap.get(booking.activityId);
+
+      return {
+        id: booking.id,
+        status: booking.status,
+        date: booking.date,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        totalPrice: booking.totalPrice,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        renter: { id: booking.renterId, name: renterUser?.name ?? 'Unknown' },
+        mate: { id: booking.mateId, name: mateUser?.name ?? 'Unknown' },
+        activity: { id: booking.activityId, name: activity?.name ?? 'Unknown' },
+      };
+    });
+  }
+
+  private toEpochMillis(value: unknown): number {
+    if (value instanceof Temporal.Instant) {
+      return value.epochMilliseconds;
+    }
+    if (typeof value === 'object' && value !== null && 'epochMilliseconds' in value) {
+      return (value as Temporal.Instant).epochMilliseconds;
+    }
+    return 0;
   }
 
   private parseDate(value: string): Temporal.Instant {
@@ -75,7 +412,7 @@ export class BookingsService {
     try {
       return Temporal.PlainDate.from(value)
         .toZonedDateTime({
-          timeZone: 'Asia/Bangkok',
+          timeZone: TIMEZONE,
           plainTime: '00:00',
         })
         .toInstant();
@@ -86,18 +423,14 @@ export class BookingsService {
 
   private parseDateTime(date: string, time: string): Temporal.Instant {
     try {
-      if (/^\d{2}:\d{2}$/.test(time)) {
-        return Temporal.PlainDate.from(date)
-          .toZonedDateTime({
-            timeZone: 'Asia/Bangkok',
-            plainTime: `${time}:00`,
-          })
-          .toInstant();
-      }
-
-      return Temporal.Instant.from(time);
+      return Temporal.PlainDate.from(date)
+        .toZonedDateTime({
+          timeZone: TIMEZONE,
+          plainTime: `${time}:00`,
+        })
+        .toInstant();
     } catch {
-      throw new BadRequestException('startTime and endTime must be valid date-time values');
+      throw new BadRequestException('startTime and endTime must be valid time values');
     }
   }
 }
