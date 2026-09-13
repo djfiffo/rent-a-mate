@@ -509,9 +509,9 @@
                 }
               },
               "deactiveAt": {
-                "nullable": false,
+                "nullable": true,
                 "type": {
-                  "codecId": "pg/date-temporal@1",
+                  "codecId": "pg/timestamptz-temporal@1",
                   "kind": "scalar"
                 }
               },
@@ -1850,9 +1850,9 @@
                   "nullable": false
                 },
                 "deactiveAt": {
-                  "codecId": "pg/date-temporal@1",
-                  "nativeType": "date",
-                  "nullable": false
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
                 },
                 "districtId": {
                   "codecId": "pg/int4@1",
@@ -2690,7 +2690,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "cce6e66bd0a3afe03c8ea61348258149195916f7e37e5d20d626885a3f5d38e0"
+    "storageHash": "0734dc158e0ff559a1c9910ddcda3d33dc5912e809a74fde9b86840743a7f11d"
   },
   "execution": {
     "executionHash": "2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8",

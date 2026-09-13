@@ -43,7 +43,7 @@ model Mate {
   updatedAt  DateTime @default(now())
 
   isActive Boolean @default(true)
-  deactiveAt Date
+  deactiveAt DateTime?
 
   availability MateAvailability[]
 
