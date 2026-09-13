@@ -1,9 +1,10 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Temporal } from '@js-temporal/polyfill';
 import bcrypt from 'bcrypt';
 import { createHash, randomUUID } from 'node:crypto';
 import { db } from '../prisma/db.js';
+import { isUserBanned } from '../admin/ban.store.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 
@@ -48,6 +49,10 @@ export class AuthService {
 		const user = await db.orm.public.User.where({ email: dto.email }).first();
 		if (!user || !(await bcrypt.compare(dto.password, user.password))) {
 			throw new UnauthorizedException('Invalid email or password');
+		}
+
+		if (isUserBanned(user.id)) {
+			throw new ForbiddenException('Account is banned');
 		}
 
 		const tokens = await this.issueTokenPair(user.id, user.role);
