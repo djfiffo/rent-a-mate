@@ -13,6 +13,17 @@ enum BookingStatus {
   cancelled
 }
 
+enum NotificationType {
+  booking_requested
+  booking_confirmed
+  booking_declined
+  booking_cancelled
+  booking_completed
+  payment_paid
+  message_received
+  report_resolved
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   name      String
@@ -27,6 +38,7 @@ model User {
   reviews  Review[]
 
   refreshTokens RefreshToken[]
+  notifications Notification[]
 }
 
 model Mate {
@@ -145,11 +157,16 @@ model Booking {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @default(now())
 
-  renter   User     @relation(fields: [renterId], references: [id])
-  mate     Mate     @relation(fields: [mateId], references: [id])
-  activity Activity @relation(fields: [activityId], references: [id])
-  payment  Payment?
-  review   Review?
+  renter        User           @relation(fields: [renterId], references: [id])
+  mate          Mate           @relation(fields: [mateId], references: [id])
+  activity      Activity       @relation(fields: [activityId], references: [id])
+  payment       Payment?
+  review        Review?
+  notifications Notification[]
+
+  @@index([mateId, date, status])
+  @@index([renterId, createdAt])
+  @@index([status, date])
 }
 
 model Payment {
@@ -178,6 +195,22 @@ model Review {
   booking Booking @relation(fields: [bookingId], references: [id])
   renter  User    @relation(fields: [renterId], references: [id])
   mate    Mate    @relation(fields: [mateId], references: [id])
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  type      NotificationType
+  message   String
+  bookingId Int?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user    User     @relation(fields: [userId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
 }
 
 model RefreshToken {
