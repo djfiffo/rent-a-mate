@@ -1,39 +1,15 @@
 import {
   Body,
-  CanActivate,
   Controller,
-  ExecutionContext,
-  ForbiddenException as ForbiddenExc,
   Get,
-  Injectable,
   Param,
   ParseIntPipe,
   Patch,
   Query,
-  SetMetadata,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-
-const ROLES_KEY = 'roles';
-const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
-
-@Injectable()
-class RolesGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
-  canActivate(context: ExecutionContext): boolean {
-    const required = this.reflector.getAllAndOverride<string[] | undefined>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (!required || required.length === 0) return true;
-    const role = context.switchToHttp().getRequest<{ user?: { role?: string } }>().user?.role;
-    if (!role || !required.includes(role)) throw new ForbiddenExc('Insufficient role permissions');
-    return true;
-  }
-}
 import { CurrentUser } from '../users/decorators/current-user.decorator.js';
 import type { AuthUser } from '../users/users.types.js';
 import { AdminService } from './admin.service.js';
@@ -47,6 +23,8 @@ import { AnalyticsQueryDto } from './dto/analytics-query.dto.js';
 import { BanUserDto } from './dto/ban-user.dto.js';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto.js';
 import { ListUsersQueryDto } from './dto/list-users-query.dto.js';
+import { Roles } from './roles.decorator.js';
+import { RolesGuard } from './roles.guard.js';
 
 interface ApiResponse<T> {
   status: 'success';
