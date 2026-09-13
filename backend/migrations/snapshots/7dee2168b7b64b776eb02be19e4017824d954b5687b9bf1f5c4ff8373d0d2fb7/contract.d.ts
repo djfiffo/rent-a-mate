@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'0734dc158e0ff559a1c9910ddcda3d33dc5912e809a74fde9b86840743a7f11d'>;
+  StorageHashBase<'7dee2168b7b64b776eb02be19e4017824d954b5687b9bf1f5c4ff8373d0d2fb7'>;
 export type ExecutionHash =
   ExecutionHashBase<'2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8'>;
 export type ProfileHash =
@@ -280,7 +280,7 @@ export type FieldOutputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly isActive: CodecTypes['pg/bool@1']['output'];
-      readonly deactiveAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['output'];
     };
     readonly MateActivity: {
       readonly mateId: CodecTypes['pg/int4@1']['output'];
@@ -385,7 +385,7 @@ export type FieldInputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly isActive: CodecTypes['pg/bool@1']['input'];
-      readonly deactiveAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['input'];
     };
     readonly MateActivity: {
       readonly mateId: CodecTypes['pg/int4@1']['input'];
@@ -468,7 +468,7 @@ export type StorageColumnTypes = {
       readonly totalPrice: CodecTypes['pg/numeric@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
-    readonly districts: {
+    readonly district: {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
       readonly provinceId: CodecTypes['pg/int4@1']['output'];
@@ -481,7 +481,7 @@ export type StorageColumnTypes = {
       readonly age: CodecTypes['pg/int4@1']['output'] | null;
       readonly bio: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-      readonly deactiveAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['output'];
       readonly districtId: CodecTypes['pg/int4@1']['output'];
       readonly hourlyRate: CodecTypes['pg/numeric@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -519,7 +519,7 @@ export type StorageColumnTypes = {
       readonly stripePaymentIntentId: CodecTypes['pg/text@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
-    readonly provinces: {
+    readonly province: {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
     };
@@ -573,7 +573,7 @@ export type StorageColumnInputTypes = {
       readonly totalPrice: CodecTypes['pg/numeric@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
-    readonly districts: {
+    readonly district: {
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'];
       readonly provinceId: CodecTypes['pg/int4@1']['input'];
@@ -586,7 +586,7 @@ export type StorageColumnInputTypes = {
       readonly age: CodecTypes['pg/int4@1']['input'] | null;
       readonly bio: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
-      readonly deactiveAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['input'];
       readonly districtId: CodecTypes['pg/int4@1']['input'];
       readonly hourlyRate: CodecTypes['pg/numeric@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -624,7 +624,7 @@ export type StorageColumnInputTypes = {
       readonly stripePaymentIntentId: CodecTypes['pg/text@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
-    readonly provinces: {
+    readonly province: {
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'];
     };
@@ -824,12 +824,16 @@ type ContractBase = Omit<
                 },
               ];
             };
-            readonly districts: {
+            readonly district: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'int4';
                   readonly codecId: 'pg/int4@1';
                   readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'function';
+                    readonly expression: 'autoincrement()';
+                  };
                 };
                 readonly provinceId: {
                   readonly nativeType: 'int4';
@@ -843,11 +847,11 @@ type ContractBase = Omit<
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
-              uniques: readonly [{ readonly columns: readonly ['provinceId', 'name'] }];
+              uniques: readonly [];
               indexes: readonly [
                 {
-                  readonly name: 'districts_provinceId_idx_a419a0e2';
-                  readonly prefix: 'districts_provinceId_idx';
+                  readonly name: 'district_provinceId_idx_a419a0e2';
+                  readonly prefix: 'district_provinceId_idx';
                   readonly columns: readonly ['provinceId'];
                   readonly unique: false;
                 },
@@ -856,12 +860,12 @@ type ContractBase = Omit<
                 {
                   readonly source: {
                     readonly namespaceId: 'public' & NamespaceId;
-                    readonly tableName: 'districts';
+                    readonly tableName: 'district';
                     readonly columns: readonly ['provinceId'];
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
-                    readonly tableName: 'provinces';
+                    readonly tableName: 'province';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -962,9 +966,9 @@ type ContractBase = Omit<
                   };
                 };
                 readonly deactiveAt: {
-                  readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-temporal@1';
-                  readonly nullable: true;
+                  readonly nativeType: 'date';
+                  readonly codecId: 'pg/date-temporal@1';
+                  readonly nullable: false;
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
@@ -1004,7 +1008,7 @@ type ContractBase = Omit<
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
-                    readonly tableName: 'provinces';
+                    readonly tableName: 'province';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -1016,7 +1020,7 @@ type ContractBase = Omit<
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
-                    readonly tableName: 'districts';
+                    readonly tableName: 'district';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -1275,12 +1279,16 @@ type ContractBase = Omit<
                 },
               ];
             };
-            readonly provinces: {
+            readonly province: {
               columns: {
                 readonly id: {
                   readonly nativeType: 'int4';
                   readonly codecId: 'pg/int4@1';
                   readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'function';
+                    readonly expression: 'autoincrement()';
+                  };
                 };
                 readonly name: {
                   readonly nativeType: 'text';
@@ -1548,8 +1556,8 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'MateAvailability';
     };
-    readonly provinces: { readonly namespace: 'public' & NamespaceId; readonly model: 'Province' };
-    readonly districts: { readonly namespace: 'public' & NamespaceId; readonly model: 'District' };
+    readonly province: { readonly namespace: 'public' & NamespaceId; readonly model: 'Province' };
+    readonly district: { readonly namespace: 'public' & NamespaceId; readonly model: 'District' };
     readonly activity: { readonly namespace: 'public' & NamespaceId; readonly model: 'Activity' };
     readonly interest: { readonly namespace: 'public' & NamespaceId; readonly model: 'Interest' };
     readonly mateActivity: {
@@ -1784,7 +1792,7 @@ type ContractBase = Omit<
               };
             };
             readonly storage: {
-              readonly table: 'districts';
+              readonly table: 'district';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };
@@ -1883,11 +1891,8 @@ type ContractBase = Omit<
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
               readonly deactiveAt: {
-                readonly nullable: true;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-temporal@1';
-                };
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/date-temporal@1' };
               };
             };
             readonly relations: {
@@ -2245,7 +2250,7 @@ type ContractBase = Omit<
               };
             };
             readonly storage: {
-              readonly table: 'provinces';
+              readonly table: 'province';
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly id: { readonly column: 'id' };

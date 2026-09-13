@@ -12,7 +12,7 @@
       "model": "Booking",
       "namespace": "public"
     },
-    "district": {
+    "districts": {
       "model": "District",
       "namespace": "public"
     },
@@ -40,7 +40,7 @@
       "model": "Payment",
       "namespace": "public"
     },
-    "province": {
+    "provinces": {
       "model": "Province",
       "namespace": "public"
     },
@@ -435,7 +435,7 @@
                 }
               },
               "namespaceId": "public",
-              "table": "district"
+              "table": "districts"
             }
           },
           "Interest": {
@@ -509,9 +509,9 @@
                 }
               },
               "deactiveAt": {
-                "nullable": false,
+                "nullable": true,
                 "type": {
-                  "codecId": "pg/date-temporal@1",
+                  "codecId": "pg/timestamptz-temporal@1",
                   "kind": "scalar"
                 }
               },
@@ -1134,7 +1134,7 @@
                 }
               },
               "namespaceId": "public",
-              "table": "province"
+              "table": "provinces"
             }
           },
           "RefreshToken": {
@@ -1736,14 +1736,10 @@
               },
               "uniques": []
             },
-            "district": {
+            "districts": {
               "columns": {
                 "id": {
                   "codecId": "pg/int4@1",
-                  "default": {
-                    "expression": "autoincrement()",
-                    "kind": "function"
-                  },
                   "nativeType": "int4",
                   "nullable": false
                 },
@@ -1765,14 +1761,14 @@
                       "provinceId"
                     ],
                     "namespaceId": "public",
-                    "tableName": "district"
+                    "tableName": "districts"
                   },
                   "target": {
                     "columns": [
                       "id"
                     ],
                     "namespaceId": "public",
-                    "tableName": "province"
+                    "tableName": "provinces"
                   }
                 }
               ],
@@ -1781,8 +1777,8 @@
                   "columns": [
                     "provinceId"
                   ],
-                  "name": "district_provinceId_idx_a419a0e2",
-                  "prefix": "district_provinceId_idx",
+                  "name": "districts_provinceId_idx_a419a0e2",
+                  "prefix": "districts_provinceId_idx",
                   "unique": false
                 }
               ],
@@ -1791,7 +1787,14 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "provinceId",
+                    "name"
+                  ]
+                }
+              ]
             },
             "interest": {
               "columns": {
@@ -1847,9 +1850,9 @@
                   "nullable": false
                 },
                 "deactiveAt": {
-                  "codecId": "pg/date-temporal@1",
-                  "nativeType": "date",
-                  "nullable": false
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
                 },
                 "districtId": {
                   "codecId": "pg/int4@1",
@@ -1939,7 +1942,7 @@
                       "id"
                     ],
                     "namespaceId": "public",
-                    "tableName": "province"
+                    "tableName": "provinces"
                   }
                 },
                 {
@@ -1955,7 +1958,7 @@
                       "id"
                     ],
                     "namespaceId": "public",
-                    "tableName": "district"
+                    "tableName": "districts"
                   }
                 }
               ],
@@ -2323,14 +2326,10 @@
                 }
               ]
             },
-            "province": {
+            "provinces": {
               "columns": {
                 "id": {
                   "codecId": "pg/int4@1",
-                  "default": {
-                    "expression": "autoincrement()",
-                    "kind": "function"
-                  },
                   "nativeType": "int4",
                   "nullable": false
                 },
@@ -2691,7 +2690,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "7dee2168b7b64b776eb02be19e4017824d954b5687b9bf1f5c4ff8373d0d2fb7"
+    "storageHash": "0734dc158e0ff559a1c9910ddcda3d33dc5912e809a74fde9b86840743a7f11d"
   },
   "execution": {
     "executionHash": "2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8",

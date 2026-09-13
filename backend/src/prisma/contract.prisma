@@ -43,7 +43,7 @@ model Mate {
   updatedAt  DateTime @default(now())
 
   isActive Boolean @default(true)
-  deactiveAt Date
+  deactiveAt DateTime?
 
   availability MateAvailability[]
 
@@ -71,20 +71,30 @@ model MateAvailability {
 }
 
 model Province {
-  id        Int        @id @default(autoincrement())
+  id        Int        @id
   name      String     @unique
 
   districts District[]
   mates     Mate[]
+
+  @@map("provinces")
 }
 
 model District {
-  id         Int      @id @default(autoincrement())
+  id         Int      @id
   provinceId Int
   name       String
 
-  province Province @relation(fields: [provinceId], references: [id])
-  mates    Mate[]
+  province Province @relation(
+    fields: [provinceId],
+    references: [id]
+  )
+
+  mates Mate[]
+
+  @@unique([provinceId, name])
+
+  @@map("districts")
 }
 
 model Activity {
