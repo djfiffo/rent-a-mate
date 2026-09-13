@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'0734dc158e0ff559a1c9910ddcda3d33dc5912e809a74fde9b86840743a7f11d'>;
+  StorageHashBase<'cce6e66bd0a3afe03c8ea61348258149195916f7e37e5d20d626885a3f5d38e0'>;
 export type ExecutionHash =
   ExecutionHashBase<'2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8'>;
 export type ProfileHash =
@@ -280,7 +280,7 @@ export type FieldOutputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly isActive: CodecTypes['pg/bool@1']['output'];
-      readonly deactiveAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['output'];
     };
     readonly MateActivity: {
       readonly mateId: CodecTypes['pg/int4@1']['output'];
@@ -385,7 +385,7 @@ export type FieldInputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly isActive: CodecTypes['pg/bool@1']['input'];
-      readonly deactiveAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['input'];
     };
     readonly MateActivity: {
       readonly mateId: CodecTypes['pg/int4@1']['input'];
@@ -481,7 +481,7 @@ export type StorageColumnTypes = {
       readonly age: CodecTypes['pg/int4@1']['output'] | null;
       readonly bio: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-      readonly deactiveAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['output'];
       readonly districtId: CodecTypes['pg/int4@1']['output'];
       readonly hourlyRate: CodecTypes['pg/numeric@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -586,7 +586,7 @@ export type StorageColumnInputTypes = {
       readonly age: CodecTypes['pg/int4@1']['input'] | null;
       readonly bio: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
-      readonly deactiveAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly deactiveAt: CodecTypes['pg/date-temporal@1']['input'];
       readonly districtId: CodecTypes['pg/int4@1']['input'];
       readonly hourlyRate: CodecTypes['pg/numeric@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
@@ -962,9 +962,9 @@ type ContractBase = Omit<
                   };
                 };
                 readonly deactiveAt: {
-                  readonly nativeType: 'timestamptz';
-                  readonly codecId: 'pg/timestamptz-temporal@1';
-                  readonly nullable: true;
+                  readonly nativeType: 'date';
+                  readonly codecId: 'pg/date-temporal@1';
+                  readonly nullable: false;
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
@@ -1883,11 +1883,8 @@ type ContractBase = Omit<
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
               readonly deactiveAt: {
-                readonly nullable: true;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'pg/timestamptz-temporal@1';
-                };
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/date-temporal@1' };
               };
             };
             readonly relations: {
