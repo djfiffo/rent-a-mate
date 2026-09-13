@@ -36,6 +36,10 @@
       "model": "MateInterest",
       "namespace": "public"
     },
+    "notifications": {
+      "model": "Notification",
+      "namespace": "public"
+    },
     "payment": {
       "model": "Payment",
       "namespace": "public"
@@ -79,6 +83,43 @@
               {
                 "name": "cancelled",
                 "value": "cancelled"
+              }
+            ]
+          },
+          "NotificationType": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "booking_requested",
+                "value": "booking_requested"
+              },
+              {
+                "name": "booking_confirmed",
+                "value": "booking_confirmed"
+              },
+              {
+                "name": "booking_declined",
+                "value": "booking_declined"
+              },
+              {
+                "name": "booking_cancelled",
+                "value": "booking_cancelled"
+              },
+              {
+                "name": "booking_completed",
+                "value": "booking_completed"
+              },
+              {
+                "name": "payment_paid",
+                "value": "payment_paid"
+              },
+              {
+                "name": "message_received",
+                "value": "message_received"
+              },
+              {
+                "name": "report_resolved",
+                "value": "report_resolved"
               }
             ]
           },
@@ -277,6 +318,21 @@
                 },
                 "to": {
                   "model": "Mate",
+                  "namespace": "public"
+                }
+              },
+              "notifications": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "bookingId"
+                  ]
+                },
+                "to": {
+                  "model": "Notification",
                   "namespace": "public"
                 }
               },
@@ -968,6 +1024,124 @@
               "table": "mateInterest"
             }
           },
+          "Notification": {
+            "fields": {
+              "bookingId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "isRead": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "message": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "type": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "NotificationType",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "userId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "booking": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "bookingId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Booking",
+                  "namespace": "public"
+                }
+              },
+              "user": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "userId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "bookingId": {
+                  "column": "bookingId"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "isRead": {
+                  "column": "isRead"
+                },
+                "message": {
+                  "column": "message"
+                },
+                "type": {
+                  "column": "type"
+                },
+                "userId": {
+                  "column": "userId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "notifications"
+            }
+          },
           "Payment": {
             "fields": {
               "amount": {
@@ -1470,6 +1644,21 @@
                   "namespace": "public"
                 }
               },
+              "notifications": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
+                },
+                "to": {
+                  "model": "Notification",
+                  "namespace": "public"
+                }
+              },
               "refreshTokens": {
                 "cardinality": "1:N",
                 "on": {
@@ -1714,6 +1903,16 @@
                 },
                 {
                   "columns": [
+                    "mateId",
+                    "date",
+                    "status"
+                  ],
+                  "name": "booking_mateId_date_status_idx_3b43df3b",
+                  "prefix": "booking_mateId_date_status_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
                     "mateId"
                   ],
                   "name": "booking_mateId_idx_99af79ac",
@@ -1722,10 +1921,28 @@
                 },
                 {
                   "columns": [
+                    "renterId",
+                    "createdAt"
+                  ],
+                  "name": "booking_renterId_createdAt_idx_63c3c59b",
+                  "prefix": "booking_renterId_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
                     "renterId"
                   ],
                   "name": "booking_renterId_idx_e98d17a1",
                   "prefix": "booking_renterId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "status",
+                    "date"
+                  ],
+                  "name": "booking_status_date_idx_f5d04248",
+                  "prefix": "booking_status_date_idx",
                   "unique": false
                 }
               ],
@@ -2234,6 +2451,138 @@
               },
               "uniques": []
             },
+            "notifications": {
+              "checks": [
+                {
+                  "expression": "\"type\" IN ('booking_requested', 'booking_confirmed', 'booking_declined', 'booking_cancelled', 'booking_completed', 'payment_paid', 'message_received', 'report_resolved')",
+                  "name": "notifications_type_check_c05ec7ce",
+                  "prefix": "notifications_type_check"
+                }
+              ],
+              "columns": {
+                "bookingId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "isRead": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "message": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "type": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "NotificationType",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "userId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "userId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "notifications"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "bookingId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "notifications"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "booking"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "bookingId"
+                  ],
+                  "name": "notifications_bookingId_idx_17848f4a",
+                  "prefix": "notifications_bookingId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "userId"
+                  ],
+                  "name": "notifications_userId_idx_a489d58a",
+                  "prefix": "notifications_userId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "userId",
+                    "isRead",
+                    "createdAt"
+                  ],
+                  "name": "notifications_userId_isRead_createdAt_idx_33778255",
+                  "prefix": "notifications_userId_isRead_createdAt_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "payment": {
               "columns": {
                 "amount": {
@@ -2676,6 +3025,19 @@
                 "cancelled"
               ]
             },
+            "NotificationType": {
+              "kind": "valueSet",
+              "values": [
+                "booking_requested",
+                "booking_confirmed",
+                "booking_declined",
+                "booking_cancelled",
+                "booking_completed",
+                "payment_paid",
+                "message_received",
+                "report_resolved"
+              ]
+            },
             "UserRole": {
               "kind": "valueSet",
               "values": [
@@ -2690,7 +3052,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "0734dc158e0ff559a1c9910ddcda3d33dc5912e809a74fde9b86840743a7f11d"
+    "storageHash": "09625ff0046dd02e1681a6d60f40b18efa3b28b6d8f70413150205fe56240b37"
   },
   "execution": {
     "executionHash": "2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8",
