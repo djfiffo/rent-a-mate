@@ -3,6 +3,9 @@ export interface AdminSafeUser {
   name: string;
   email: string;
   role: string;
+  isBanned: boolean;
+  isActive: boolean;
+  isVerified: boolean;
   createdAt: unknown;
   updatedAt: unknown;
 }
