@@ -51,10 +51,13 @@ async function main() {
   // -------------------------
 
   for (const province of provinces) {
-    await db.orm.public.Province.create({
-      id: province.provinceCode,
-      name: province.provinceNameTh,
-    });
+    const existing = await db.orm.public.Province.where({ id: province.provinceCode }).first();
+    if (!existing) {
+      await db.orm.public.Province.create({
+        id: province.provinceCode,
+        name: province.provinceNameTh,
+      });
+    }
   }
 
   console.log('✅ Provinces seeded');
@@ -64,11 +67,14 @@ async function main() {
   // -------------------------
 
   for (const district of districts) {
-    await db.orm.public.District.create({
-      id: district.districtCode,
-      provinceId: district.provinceCode,
-      name: district.districtNameTh,
-    });
+    const existing = await db.orm.public.District.where({ id: district.districtCode }).first();
+    if (!existing) {
+      await db.orm.public.District.create({
+        id: district.districtCode,
+        provinceId: district.provinceCode,
+        name: district.districtNameTh,
+      });
+    }
   }
 
   console.log('✅ Districts seeded');

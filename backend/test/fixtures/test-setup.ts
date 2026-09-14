@@ -156,19 +156,37 @@ export async function seedTestDatabase(): Promise<TestData> {
 }
 
 /**
- * Clean up all test data from database.
- * Call this in afterEach or afterAll hook.
+ * Clean up all test-created data from database.
+ *
+ * NOTE: Activity and Interest are NOT deleted here — they are permanent
+ * reference/lookup data seeded once via `npm run seed` (prisma/seed.ts).
+ * seedTestDatabase() only *queries* them (never creates them), so deleting
+ * them here would break every subsequent call to seedTestDatabase().
+ *
+ * Call this in beforeAll (before seeding) or afterAll (after tests) hook.
  */
 export async function cleanupTestDatabase(): Promise<void> {
+  // IMPORTANT: `.delete()` only removes a single (the first) matching row.
+  // To remove *every* matching row we must use `.deleteAndCount()` instead.
+  //
+  // Children must be deleted before their parents to satisfy FK constraints:
+  // RefreshToken/Notification/Booking -> User, Payment/Review -> Booking,
+  // MateActivity/MateInterest/MateAvailability -> Mate.
+  await db.orm.public.RefreshToken.where((rt) => rt.userId.gt(0)).deleteAndCount();
+  await db.orm.public.Payment.where((p) => p.id.gt(0)).deleteAndCount();
+  await db.orm.public.Review.where((r) => r.id.gt(0)).deleteAndCount();
+  await db.orm.public.Notification.where((n) => n.id.gt(0)).deleteAndCount();
+
+  await db.orm.public.Booking.where((b) => b.id.gt(0)).deleteAndCount();
+
   await Promise.all([
-    db.orm.public.Booking.where((b) => b.id.gt(0)).delete(),
-    db.orm.public.Notification.where((n) => n.id.gt(0)).delete(),
-    db.orm.public.MateAvailability.where((ma) => ma.id.gt(0)).delete(),
-    db.orm.public.MateActivity.where((ma) => ma.mateId.gt(0)).delete(),
-    db.orm.public.Mate.where((m) => m.id.gt(0)).delete(),
-    db.orm.public.Activity.where((a) => a.id.gt(0)).delete(),
-    db.orm.public.User.where((u) => u.id.gt(0)).delete(),
+    db.orm.public.MateAvailability.where((ma) => ma.id.gt(0)).deleteAndCount(),
+    db.orm.public.MateActivity.where((ma) => ma.mateId.gt(0)).deleteAndCount(),
+    db.orm.public.MateInterest.where((mi) => mi.mateId.gt(0)).deleteAndCount(),
   ]);
+
+  await db.orm.public.Mate.where((m) => m.id.gt(0)).deleteAndCount();
+  await db.orm.public.User.where((u) => u.id.gt(0)).deleteAndCount();
 }
 
 /**
