@@ -72,7 +72,7 @@ export class MatesService {
         : mate;
 
       if (input.activityIds !== undefined) {
-        await transaction.orm.public.MateActivity.where({ mateId: mate.id }).delete();
+        await transaction.orm.public.MateActivity.where({ mateId: mate.id }).deleteAndCount();
         await Promise.all(
           input.activityIds.map((activityId) =>
             transaction.orm.public.MateActivity.create({ mateId: mate.id, activityId }),
@@ -81,7 +81,7 @@ export class MatesService {
       }
 
       if (input.interestIds !== undefined) {
-        await transaction.orm.public.MateInterest.where({ mateId: mate.id }).delete();
+        await transaction.orm.public.MateInterest.where({ mateId: mate.id }).deleteAndCount();
         await Promise.all(
           input.interestIds.map((interestId) =>
             transaction.orm.public.MateInterest.create({ mateId: mate.id, interestId }),

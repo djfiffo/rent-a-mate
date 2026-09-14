@@ -17,7 +17,7 @@ type AuthTokenPayload = {
 
 type TokenStorage = Pick<typeof db, 'orm'>;
 
-const ACCESS_TOKEN_TTL = '15m';
+const ACCESS_TOKEN_TTL = '2h';
 const REFRESH_TOKEN_TTL = '30d';
 
 @Injectable()

@@ -34,6 +34,7 @@ interface Query<T> {
   all(): Promise<T[]>;
   update(data: object): Promise<T | null>;
   delete(): Promise<void>;
+  deleteAndCount(): Promise<number>;
 }
 
 interface Model<T> {
