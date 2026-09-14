@@ -72,6 +72,58 @@ async function main() {
   }
 
   console.log('✅ Districts seeded');
+
+  // -------------------------
+  // Seed Activities
+  // -------------------------
+  const activities = [
+    'เดินเล่น',
+    'ดูหนัง',
+    'พาเที่ยว',
+    'ช่วยเคลื่อนย้าย',
+    'ช่วยการบ้าน',
+    'ช่วยเรียน',
+    'เล่นกีฬา',
+    'ช่วยสัมภาษณ์',
+    'ซ่อมบ้าน',
+    'ช่วยที่อุบ',
+  ];
+
+  for (const name of activities) {
+    const existing = await db.orm.public.Activity.where({ name }).first();
+    if (!existing) {
+      await db.orm.public.Activity.create({ name });
+    }
+  }
+  console.log('✅ Activities seeded');
+
+  // -------------------------
+  // Seed Interests
+  // -------------------------
+  const interests = [
+    'ท่องเที่ยว',
+    'กีฬา',
+    'ศิลปะ',
+    'เทคโนโลยี',
+    'ดนตรี',
+    'การถ่ายภาพ',
+    'อ่านหนังสือ',
+    'การออกแบบ',
+    'โยคะ',
+    'เกม',
+    'หนังสือการ์ตูน',
+    'อาหาร',
+    'ธรรมชาติ',
+  ];
+
+  for (const name of interests) {
+    const existing = await db.orm.public.Interest.where({ name }).first();
+    if (!existing) {
+      await db.orm.public.Interest.create({ name });
+    }
+  }
+  console.log('✅ Interests seeded');
+
   console.log('🎉 Database seed completed!');
 }
 
