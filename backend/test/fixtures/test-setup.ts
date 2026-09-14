@@ -1,17 +1,26 @@
 import { db } from '../../src/prisma/db.js';
 import bcrypt from 'bcrypt';
 import { Temporal } from '@js-temporal/polyfill';
+import type { UserRecord } from '../../src/users/users.types.js';
+import type { BookingRecord, MateRecordForBooking, ActivityRecordForBooking } from '../../src/bookings/bookings.types.js';
+import type { NotificationRecord } from '../../src/notifications/notifications.types.js';
+
+/**
+ * Type representing a Mate record from the database.
+ * Derived from db.orm.public.Mate.create() return type.
+ */
+type MateRecord = Awaited<ReturnType<typeof db.orm.public.Mate.create>>;
 
 export interface TestData {
-  renter1: any;
-  renter2: any;
-  mateUser1: any;
-  mateUser2: any;
-  admin: any;
-  mate1: any;
-  mate2: any;
-  activity1: any;
-  activity2: any;
+  renter1: UserRecord;
+  renter2: UserRecord;
+  mateUser1: UserRecord;
+  mateUser2: UserRecord;
+  admin: UserRecord;
+  mate1: MateRecord;
+  mate2: MateRecord;
+  activity1: ActivityRecordForBooking;
+  activity2: ActivityRecordForBooking;
 }
 
 const TIMEZONE = 'Asia/Bangkok';
@@ -60,16 +69,27 @@ export async function seedTestDatabase(): Promise<TestData> {
     role: 'admin',
   });
 
-  // Create activities
-  const activity1 = await db.orm.public.Activity.create({
-    name: 'Moving',
-    description: 'Help with moving boxes and furniture',
-  });
+  // Query activities from seeded data
+  const activity1 = await db.orm.public.Activity.where({ name: 'เดินเล่น' }).first();
+  if (!activity1) {
+    throw new Error('Activity "เดินเล่น" not found in database. Make sure seed.ts has run.');
+  }
 
-  const activity2 = await db.orm.public.Activity.create({
-    name: 'Cleaning',
-    description: 'Help with house cleaning',
-  });
+  const activity2 = await db.orm.public.Activity.where({ name: 'ดูหนัง' }).first();
+  if (!activity2) {
+    throw new Error('Activity "ดูหนัง" not found in database. Make sure seed.ts has run.');
+  }
+
+  // Get first province and district for testing
+  const province = await db.orm.public.Province.where((p) => p.id.gt(0)).first();
+  if (!province) {
+    throw new Error('No provinces found in database. Make sure seed.ts has run.');
+  }
+
+  const district = await db.orm.public.District.where({ provinceId: province.id }).first();
+  if (!district) {
+    throw new Error(`No districts found for province ${province.id}. Make sure seed.ts has run.`);
+  }
 
   // Create mate profiles
   const mate1 = await db.orm.public.Mate.create({
@@ -77,6 +97,8 @@ export async function seedTestDatabase(): Promise<TestData> {
     hourlyRate: '500.00',
     isActive: true,
     bio: 'Experienced mover',
+    provinceId: province.id,
+    districtId: district.id,
   });
 
   const mate2 = await db.orm.public.Mate.create({
@@ -84,6 +106,8 @@ export async function seedTestDatabase(): Promise<TestData> {
     hourlyRate: '600.00',
     isActive: true,
     bio: 'Experienced cleaner',
+    provinceId: province.id,
+    districtId: district.id,
   });
 
   // Link mate activities
@@ -140,7 +164,7 @@ export async function cleanupTestDatabase(): Promise<void> {
     db.orm.public.Booking.where((b) => b.id.gt(0)).delete(),
     db.orm.public.Notification.where((n) => n.id.gt(0)).delete(),
     db.orm.public.MateAvailability.where((ma) => ma.id.gt(0)).delete(),
-    db.orm.public.MateActivity.where((ma) => ma.id.gt(0)).delete(),
+    db.orm.public.MateActivity.where((ma) => ma.mateId.gt(0)).delete(),
     db.orm.public.Mate.where((m) => m.id.gt(0)).delete(),
     db.orm.public.Activity.where((a) => a.id.gt(0)).delete(),
     db.orm.public.User.where((u) => u.id.gt(0)).delete(),
@@ -163,7 +187,7 @@ export function getFutureDate(daysFromNow: number = 1): string {
  * Helper to verify notification was sent to a user.
  * Call after an action (booking create, accept, etc).
  */
-export async function getNotificationsForUser(userId: number): Promise<any[]> {
+export async function getNotificationsForUser(userId: number): Promise<NotificationRecord[]> {
   const notifications = await db.orm.public.Notification.where({
     userId,
   }).all();
@@ -174,10 +198,10 @@ export async function getNotificationsForUser(userId: number): Promise<any[]> {
  * Helper to find a notification by type and bookingId.
  */
 export function findNotification(
-  notifications: any[],
+  notifications: NotificationRecord[],
   type: string,
   bookingId?: number,
-): any {
+): NotificationRecord | undefined {
   return notifications.find(
     (n) => n.type === type && (bookingId ? n.bookingId === bookingId : true),
   );
