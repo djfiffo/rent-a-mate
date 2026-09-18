@@ -220,7 +220,7 @@ it('I4. Race condition: two simultaneous bookings for same slot', async () => {
 | `Cannot find module 'supertest'` | `npm install supertest @types/supertest` |
 | Tests timeout | Increase Vitest timeout: `it('...', async () => {...}, 10000)` |
 | Database locks | Use `afterEach` cleanup, not `afterAll` |
-| Token expired mid-test | Use 2h access token (already set in auth changes) |
+| Token expired mid-test | Use the configured access-token TTL; the default is now 15 minutes |
 | Temporal errors | Import `import { Temporal } from '@js-temporal/polyfill'` |
 | App not starting in tests | Make sure `NestFactory.create()` + `.init()` + `.listen()` |
 

@@ -24,6 +24,21 @@ enum NotificationType {
   report_resolved
 }
 
+enum ReportTargetType {
+  user
+  mate
+  booking
+  review
+  message
+}
+
+enum ReportStatus {
+  open
+  reviewed
+  dismissed
+  actioned
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   name      String
@@ -33,12 +48,26 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
+  isActive      Boolean   @default(true)
+  deactivatedAt DateTime?
+  isBanned      Boolean   @default(false)
+  bannedAt      DateTime?
+  banReason     String?
+  isVerified    Boolean   @default(false)
+  verifiedAt    DateTime?
+
   mate     Mate?
   bookings Booking[]
   reviews  Review[]
 
+  reportsFiled    Report[] @relation("ReportReporter")
+  reportsResolved Report[] @relation("ReportResolver")
+
   refreshTokens RefreshToken[]
   notifications Notification[]
+
+  @@index([role, createdAt])
+  @@index([isActive, isBanned])
 }
 
 model Mate {
@@ -64,8 +93,14 @@ model Mate {
   district   District        @relation(fields: [districtId], references: [id])
   activities MateActivity[]
   interests  MateInterest[]
+  photos     MatePhoto[]
   bookings   Booking[]
   reviews    Review[]
+
+  @@index([provinceId])
+  @@index([districtId])
+  @@index([hourlyRate])
+  @@index([isActive, provinceId])
 }
 
 model MateAvailability {
@@ -80,6 +115,20 @@ model MateAvailability {
   mate Mate @relation(fields: [mateId], references: [id], onDelete: Cascade)
 
   @@unique([mateId, dayOfWeek, startTime, endTime])
+}
+
+model MatePhoto {
+  id         Int      @id @default(autoincrement())
+  mateId     Int
+  url        String
+  storageKey String?
+  sortOrder  Int
+  createdAt  DateTime @default(now())
+
+  mate Mate @relation(fields: [mateId], references: [id], onDelete: Cascade)
+
+  @@unique([mateId, sortOrder])
+  @@map("mate_photos")
 }
 
 model Province {
@@ -227,4 +276,25 @@ model RefreshToken {
 
   @@index([userId, expiresAt])
   @@map("refresh_tokens")
+}
+
+model Report {
+  id             Int             @id @default(autoincrement())
+  reporterId     Int
+  targetType     ReportTargetType
+  targetId       Int
+  reason         String
+  status         ReportStatus    @default(open)
+  resolutionNote String?
+  resolvedById   Int?
+  resolvedAt     DateTime?
+  createdAt      DateTime        @default(now())
+
+  reporter   User  @relation("ReportReporter", fields: [reporterId], references: [id])
+  resolvedBy User? @relation("ReportResolver", fields: [resolvedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@index([reporterId, createdAt])
+  @@map("reports")
 }

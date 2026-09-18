@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import {
   IsInt,
   IsOptional,
@@ -7,9 +7,24 @@ import {
   Min,
 } from 'class-validator';
 
+const DAY_NAMES: Record<string, number> = {
+  MON: 1,
+  TUE: 2,
+  WED: 3,
+  THU: 4,
+  FRI: 5,
+  SAT: 6,
+  SUN: 7,
+};
+
+const toDayNumber = ({ value }: { value: unknown }) => {
+  if (typeof value === 'string') return DAY_NAMES[value.trim().toUpperCase()] ?? Number(value);
+  return value;
+};
+
 export class UpdateMateAvailabilityDto {
   @IsOptional()
-  @Type(() => Number)
+  @Transform(toDayNumber)
   @IsInt()
   @Min(1)
   @Max(7)

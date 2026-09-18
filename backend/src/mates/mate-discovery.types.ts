@@ -8,6 +8,8 @@ export interface MateDiscoveryQuery {
   districtId?: number;
   minRate?: string;
   maxRate?: string;
+  availableDate?: string;
+  minRating?: number;
   sort: MateSort;
   page: number;
   limit: number;
@@ -19,7 +21,9 @@ export interface MateListItem {
   name: string;
   hourlyRate: number;
   avgRating: number | null;
+  reviewCount: number;
   province: string;
+  district: string;
   activities: string[];
   photoUrl: string | null;
 }

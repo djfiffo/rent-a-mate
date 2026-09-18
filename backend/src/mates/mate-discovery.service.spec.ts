@@ -26,7 +26,7 @@ describe('MateDiscoveryService', () => {
     });
 
     await expect(service.list({ q: 'nan', activityIds: [2, 5], interestIds: [], sort: '-rating', page: 1, limit: 12, skip: 0 })).resolves.toEqual({
-      items: [{ id: 1, name: 'Nan', hourlyRate: 350, avgRating: 4.5, province: 'Bangkok', activities: ['drinking', 'music'], photoUrl: 'one.webp' }],
+      items: [{ id: 1, name: 'Nan', hourlyRate: 350, avgRating: 4.5, reviewCount: 2, province: 'Bangkok', district: 'Watthana', activities: ['drinking', 'music'], photoUrl: 'one.webp' }],
       meta: { page: 1, limit: 12, total: 1, totalPages: 1 },
     });
   });
