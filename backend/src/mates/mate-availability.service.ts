@@ -11,6 +11,7 @@ import { CreateMateAvailabilityDto } from './dto/create-mate-availability.dto.js
 import { UpdateMateAvailabilityDto } from './dto/update-mate-availability.dto.js';
 import { ReplaceMateAvailabilityDto } from './dto/replace-mate-availability.dto.js';
 import { MATES_DATABASE_TOKEN } from './mates.tokens.js';
+import { requirePublicMate } from './mate-visibility.js';
 import type {
   MateAvailabilityRecord,
   MateDatabase,
@@ -240,8 +241,7 @@ export class MateAvailabilityService {
    */
   async getPublicAvailability(mateId: number, dateValue: string): Promise<MateOpenInterval[]> {
     const date = this.parseDate(dateValue);
-    const mate = await this.database.orm.public.Mate.where({ id: mateId }).first();
-    if (!mate || mate.isActive === false) throw new NotFoundException('Mate not found');
+    await requirePublicMate(this.database, mateId);
 
     const [weekly, bookings] = await Promise.all([
       this.database.orm.public.MateAvailability.where({ mateId, dayOfWeek: date.dayOfWeek }).all(),

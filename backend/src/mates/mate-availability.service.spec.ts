@@ -18,6 +18,7 @@ describe('MateAvailabilityService', () => {
     const database = {
       orm: { public: {
         Mate: { where: vi.fn().mockReturnValue({ first: vi.fn().mockResolvedValue(activeMate) }) },
+        User: { where: vi.fn().mockReturnValue({ first: vi.fn().mockResolvedValue({ id: 7, isActive: true, isBanned: false }) }) },
         MateAvailability: { where: vi.fn().mockReturnValue({ all: vi.fn().mockResolvedValue(weekly) }) },
         Booking: { where: vi.fn().mockReturnValue({ all: vi.fn().mockResolvedValue([booking]) }) },
       } },
@@ -39,6 +40,7 @@ describe('MateAvailabilityService', () => {
       transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(database)),
       orm: { public: {
         Mate: { where: vi.fn().mockReturnValue({ first: vi.fn().mockResolvedValue(activeMate) }) },
+        User: { where: vi.fn().mockReturnValue({ first: vi.fn().mockResolvedValue({ id: 7, isActive: true, isBanned: false }) }) },
         MateAvailability: mateAvailability,
       } },
     } as never;
@@ -62,6 +64,7 @@ describe('MateAvailabilityService', () => {
     const database = {
       orm: { public: {
         Mate: { where: vi.fn().mockReturnValue({ first: vi.fn().mockResolvedValue(activeMate) }) },
+        User: { where: vi.fn().mockReturnValue({ first: vi.fn().mockResolvedValue({ id: 7, isActive: true, isBanned: false }) }) },
       } },
     } as never;
     const service = new MateAvailabilityService(database);

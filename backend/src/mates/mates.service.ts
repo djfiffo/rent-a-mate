@@ -159,12 +159,27 @@ export class MatesService {
     const url = uploaded?.url ?? input.url?.trim();
     if (!url) throw new BadRequestException('A photo file or URL is required');
 
-    return photoModel.create({
-      mateId: mate.id,
-      url,
-      storageKey: uploaded?.storageKey ?? (input.storageKey?.trim() || null),
-      sortOrder,
-    });
+    try {
+      return await photoModel.create({
+        mateId: mate.id,
+        url,
+        storageKey: uploaded?.storageKey ?? null,
+        sortOrder,
+      });
+    } catch (error) {
+      if (uploaded) {
+        try {
+          await this.storage.remove(uploaded.storageKey);
+        } catch {
+          // Keep the original database error. A future storage reconciler can
+          // clean up an object if the provider is temporarily unavailable.
+        }
+      }
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('Mate gallery slot is no longer available');
+      }
+      throw error;
+    }
   }
 
   private async storeUpload(mateId: number, file: MateUpload): Promise<{ url: string; storageKey: string }> {
@@ -198,8 +213,14 @@ export class MatesService {
 
     // Provider deletion precedes record deletion. If a provider fails, the
     // metadata remains available for a retry and no gallery record is lost.
-    if (photo.storageKey) await this.storage.remove(photo.storageKey);
+    if (photo.storageKey && this.isOwnedStorageKey(photo.storageKey, mate.id)) {
+      await this.storage.remove(photo.storageKey);
+    }
     await photoModel.where({ id: photo.id, mateId: mate.id }).delete();
+  }
+
+  private isOwnedStorageKey(storageKey: string, mateId: number): boolean {
+    return storageKey.startsWith(`mates/${mateId}/`) || storageKey.startsWith(`local/mates/${mateId}/`);
   }
 
   private async getProfileByMate(mate: MateRecord): Promise<MateProfile> {
@@ -310,4 +331,8 @@ export class MatesService {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
   }
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 }

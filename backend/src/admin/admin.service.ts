@@ -297,7 +297,11 @@ export class AdminService {
       this.aggregateBookingCounts(bookingRange),
       this.aggregateRevenue(paymentRange),
       this.aggregateCount(userRange),
-      this.aggregateDaily(fromInstant, toInstant, fromDate, toDate),
+      this.aggregateDaily(fromInstant, toInstant, fromDate, toDate, {
+        bookings: bookingRange,
+        payments: paymentRange,
+        users: userRange,
+      }),
     ]);
 
     const dailyMap = new Map<string, DailyAnalytics>();
@@ -356,6 +360,7 @@ export class AdminService {
     toInstant: Temporal.Instant,
     fromDate: Temporal.PlainDate,
     toDate: Temporal.PlainDate,
+    boundedQueries?: { bookings: any; payments: any; users: any },
   ): Promise<{ bookings: { date: string; value: number }[]; revenue: { date: string; value: number }[]; users: { date: string; value: number }[] }> {
     const raw = (db as any).raw;
     if (raw?.sql && typeof (db as any).runtime === 'function') {
@@ -430,15 +435,15 @@ export class AdminService {
       return [...map].map(([date, value]) => ({ date, value }));
     };
     return {
-      bookings: await rangeRows((db.orm.public as any).Booking, 'createdAt'),
+      bookings: await rangeRows(boundedQueries?.bookings ?? (db.orm.public as any).Booking, 'createdAt'),
       revenue: await rangeRows(
-        (db.orm.public as any).Payment,
+        boundedQueries?.payments ?? (db.orm.public as any).Payment,
         'paidAt',
         (row) => Number(row.amount),
         (row) => row.status === 'paid',
       ),
       users: await rangeRows(
-        (db.orm.public as any).User,
+        boundedQueries?.users ?? (db.orm.public as any).User,
         'createdAt',
         () => 1,
         (row) => row.isActive ?? true,
@@ -540,9 +545,14 @@ export class AdminService {
     if (typeof query.orderBy === 'function' && typeof query.limit === 'function') {
       const ordered = order(query);
       const limited = ordered.limit(limit);
-      return typeof limited.offset === 'function'
-        ? limited.offset(offset).all()
-        : limited.all();
+      if (typeof limited.offset === 'function') {
+        return limited.offset(offset).all();
+      }
+      if (typeof ordered.offset === 'function') {
+        return ordered.offset(offset).limit(limit).all();
+      }
+      const rows = await ordered.limit(offset + limit).all();
+      return rows.slice(offset, offset + limit);
     }
     const rows = await query.all();
     rows.sort((a: any, b: any) => this.toEpochMillis(b.createdAt) - this.toEpochMillis(a.createdAt));

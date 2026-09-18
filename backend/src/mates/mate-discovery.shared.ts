@@ -38,14 +38,13 @@ export const rowsByIds = async (
   model: any,
   field: string,
   ids: number[],
+  refine?: (row: any) => unknown,
 ): Promise<any[]> => {
   if (ids.length === 0) return [];
   if (typeof model?.where === 'function') {
-    try {
-      return await model.where((row: any) => row[field].in(ids)).all();
-    } catch {
-      // Lightweight unit-test doubles often only support object filters.
-    }
+    let query = model.where((row: any) => row[field].in(ids));
+    if (refine && typeof query?.where === 'function') query = query.where(refine);
+    return query.all();
   }
   const rows = typeof model?.all === 'function' ? await model.all() : [];
   return rows.filter((row: any) => ids.includes(row[field]));

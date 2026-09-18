@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
+import { PasswordHashService } from '../users/password.service.js';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -8,7 +9,7 @@ describe('AuthService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [JwtModule.register({ secret: 'test-secret' })],
-      providers: [AuthService],
+      providers: [AuthService, PasswordHashService],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
