@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Temporal } from '@js-temporal/polyfill';
-import bcrypt from 'bcrypt';
 import { createHash, randomUUID } from 'node:crypto';
 import { db } from '../prisma/db.js';
+import { PasswordHashService } from '../users/password.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 
@@ -22,12 +22,15 @@ type AuthTokenPayload = {
 
 type TokenStorage = Pick<typeof db, 'orm'>;
 
-const ACCESS_TOKEN_TTL = '2h';
+const ACCESS_TOKEN_TTL = process.env['JWT_ACCESS_TTL'] ?? '15m';
 const REFRESH_TOKEN_TTL = '30d';
 
 @Injectable()
 export class AuthService {
-	constructor(private readonly jwtService: JwtService) {}
+	constructor(
+		private readonly jwtService: JwtService,
+		private readonly passwordService: PasswordHashService,
+	) {}
 
 	async register(dto: RegisterDto) {
 		const email = dto.email.trim().toLowerCase();
@@ -36,13 +39,21 @@ export class AuthService {
 			throw new ConflictException('Email is already registered');
 		}
 
-		const password = await bcrypt.hash(dto.password, 12);
-		const user = await db.orm.public.User.create({
-			name: dto.name,
-			email,
-			password,
-			role: dto.role,
-		});
+		const password = await this.passwordService.hash(dto.password);
+		let user: any;
+		try {
+			user = await db.orm.public.User.create({
+				name: dto.name,
+				email,
+				password,
+				role: dto.role,
+			});
+		} catch (error) {
+			if (isUniqueConstraintError(error)) {
+				throw new ConflictException('Email is already registered');
+			}
+			throw error;
+		}
 
 		return {
 			status: 'success',
@@ -53,7 +64,7 @@ export class AuthService {
 
 	async login(dto: LoginDto) {
 		const user = await db.orm.public.User.where({ email: dto.email.trim().toLowerCase() }).first();
-		if (!user || !(await bcrypt.compare(dto.password, user.password))) {
+		if (!user || !(await this.passwordService.verify(dto.password, user.password))) {
 			throw new UnauthorizedException('Invalid email or password');
 		}
 
@@ -182,7 +193,7 @@ export class AuthService {
 			},
 			{
 				secret: this.accessSecret,
-				expiresIn: ACCESS_TOKEN_TTL,
+				expiresIn: ACCESS_TOKEN_TTL as any,
 			},
 		);
 		const refreshToken = await this.jwtService.signAsync(
@@ -276,4 +287,8 @@ export class AuthService {
 			role: user.role,
 		};
 	}
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+	return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 }

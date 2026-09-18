@@ -10,6 +10,7 @@ import {
 import { Temporal } from '@js-temporal/polyfill';
 
 import { MateAvailabilityService } from '../mates/mate-availability.service.js';
+import { requireBookableMate } from '../mates/mate-visibility.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { AuthUser } from '../users/users.types.js';
 import type { PaginatedResult } from '../admin/admin.types.js';
@@ -44,17 +45,10 @@ export class BookingsService {
   ) {}
 
   async create(renterId: number, dto: CreateBookingDto): Promise<CreateBookingResult> {
-    const mate = await this.database.orm.public.Mate.where({ id: dto.mateId }).first();
-    if (!mate) {
-      throw new NotFoundException('Mate not found');
-    }
+    const { mate } = await requireBookableMate(this.database as any, dto.mateId);
     if (mate.userId === renterId) {
       throw new BadRequestException('You cannot book yourself');
     }
-    if (!mate.isActive) {
-      throw new UnprocessableEntityException('Mate profile is not active');
-    }
-
     const activity = await this.database.orm.public.Activity.where({ id: dto.activityId }).first();
     if (!activity) {
       throw new NotFoundException('Activity not found');

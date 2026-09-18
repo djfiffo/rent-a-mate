@@ -8,7 +8,6 @@ import type {
   PaginationMeta,
 } from './mate-discovery.types.js';
 import {
-  averageRating,
   compareNullableNumber,
   modelRows,
   rowsByIds,
@@ -16,6 +15,7 @@ import {
   toMinutes,
   type DiscoveryDatabase,
 } from './mate-discovery.shared.js';
+import { isPublicMateOwner } from './mate-visibility.js';
 
 const TIMEZONE = 'Asia/Bangkok';
 
@@ -80,7 +80,7 @@ export class MateDiscoveryService {
     const mateIds = mates.map((mate) => mate.id);
     const userIds = mates.map((mate) => mate.userId);
 
-    const [users, provinces, districts, activities, interests, mateActivities, mateInterests, reviews, photos] = await Promise.all([
+    const [users, provinces, districts, activities, interests, mateActivities, mateInterests, reviewAggregates] = await Promise.all([
       rowsByIds(tables.User, 'id', userIds),
       modelRows(tables.Province),
       modelRows(tables.District),
@@ -88,8 +88,7 @@ export class MateDiscoveryService {
       modelRows(tables.Interest),
       rowsByIds(tables.MateActivity, 'mateId', mateIds),
       rowsByIds(tables.MateInterest, 'mateId', mateIds),
-      rowsByIds(tables.Review, 'mateId', mateIds),
-      rowsByIds(tables.MatePhoto, 'mateId', mateIds),
+      this.reviewAggregates(tables.Review, mateIds),
     ]);
 
     const usersById = new Map(users.map((user) => [user.id, user]));
@@ -98,8 +97,6 @@ export class MateDiscoveryService {
     const activitiesById = new Map(activities.map((activity) => [activity.id, activity]));
     const activityIdsByMate = this.groupIds(mateActivities, 'mateId', 'activityId');
     const interestIdsByMate = this.groupIds(mateInterests, 'mateId', 'interestId');
-    const reviewsByMate = this.groupRows(reviews, 'mateId');
-    const photosByMate = this.groupRows(photos, 'mateId');
 
     if (query.provinceId !== undefined && query.districtId !== undefined) {
       const district = districts.find((candidate) => candidate.id === query.districtId);
@@ -122,8 +119,18 @@ export class MateDiscoveryService {
         throw new UnprocessableEntityException('availableDate cannot be in the past');
       }
       const [availability, bookings] = await Promise.all([
-        rowsByIds(tables.MateAvailability, 'mateId', mateIds),
-        rowsByIds(tables.Booking, 'mateId', mateIds),
+        rowsByIds(
+          tables.MateAvailability,
+          'mateId',
+          mateIds,
+          (row: any) => row.dayOfWeek.eq(date.toZonedDateTimeISO(TIMEZONE).dayOfWeek),
+        ),
+        rowsByIds(
+          tables.Booking,
+          'mateId',
+          mateIds,
+          (row: any) => row.date.eq(date) && row.status.in(['pending', 'confirmed']),
+        ),
       ]);
       const bookingsByMate = this.groupRows(
         bookings.filter(
@@ -148,9 +155,7 @@ export class MateDiscoveryService {
       .filter((mate) => {
         const user = usersById.get(mate.userId);
         return (
-          user !== undefined &&
-          user.isActive !== false &&
-          user.isBanned !== true &&
+          isPublicMateOwner(user) &&
           (!query.q ||
             user.name.toLocaleLowerCase().includes(query.q.toLocaleLowerCase()) ||
             mate.bio?.toLocaleLowerCase().includes(query.q.toLocaleLowerCase()))
@@ -168,23 +173,22 @@ export class MateDiscoveryService {
         const province = provincesById.get(mate.provinceId);
         const district = districtsById.get(mate.districtId);
         if (!user || !province || !district) throw new Error(`Incomplete mate relation for ${mate.id}`);
-        const mateReviews = reviewsByMate.get(mate.id) ?? [];
-        const rating = averageRating(mateReviews);
+        const reviewAggregate = reviewAggregates.get(mate.id);
+        const rating = reviewAggregate
+          ? Number((reviewAggregate.sum / reviewAggregate.count).toFixed(1))
+          : null;
         const item: MateListItem = {
           id: mate.id,
           name: user.name,
           hourlyRate: Number(mate.hourlyRate),
           avgRating: rating,
-          reviewCount: mateReviews.length,
+          reviewCount: reviewAggregate?.count ?? 0,
           province: province.name,
           district: district.name,
           activities: Array.from(activityIdsByMate.get(mate.id) ?? [])
             .map((id) => activitiesById.get(id)?.name)
             .filter((name): name is string => name !== undefined),
-          photoUrl:
-            photosByMate.get(mate.id)?.sort((left, right) => left.sortOrder - right.sortOrder)[0]?.url ??
-            mate.profileImageUrl ??
-            null,
+          photoUrl: null,
         };
         return { item, createdAt: toEpochMillis(mate.createdAt), rating };
       })
@@ -212,10 +216,64 @@ export class MateDiscoveryService {
       total,
       totalPages: Math.ceil(total / query.limit),
     };
+    const pageRows = rows.slice(query.skip, query.skip + query.limit);
+    const pagePhotos = await rowsByIds(
+      tables.MatePhoto,
+      'mateId',
+      pageRows.map(({ item }) => item.id),
+    );
+    const photosByMate = this.groupRows(pagePhotos, 'mateId');
     return {
-      items: rows.slice(query.skip, query.skip + query.limit).map(({ item }) => item),
+      items: pageRows.map(({ item }) => ({
+        ...item,
+        photoUrl:
+          photosByMate.get(item.id)?.sort((left, right) => left.sortOrder - right.sortOrder)[0]?.url ??
+          mates.find((mate) => mate.id === item.id)?.profileImageUrl ??
+          null,
+      })),
       meta,
     };
+  }
+
+  private async reviewAggregates(
+    model: any,
+    mateIds: number[],
+  ): Promise<Map<number, { count: number; sum: number }>> {
+    const aggregates = new Map<number, { count: number; sum: number }>();
+    if (mateIds.length === 0) return aggregates;
+
+    if (typeof model?.where !== 'function') {
+      const reviews = typeof model?.all === 'function' ? await model.all() : [];
+      for (const review of reviews) {
+        if (!mateIds.includes(review.mateId)) continue;
+        const current = aggregates.get(review.mateId) ?? { count: 0, sum: 0 };
+        current.count += 1;
+        current.sum += Number(review.rating);
+        aggregates.set(review.mateId, current);
+      }
+      return aggregates;
+    }
+
+    const query: any = model.where((row: any) => row.mateId.in(mateIds));
+    if (typeof query.groupBy === 'function' && typeof query.aggregate === 'function') {
+      const grouped = await query.groupBy('mateId').aggregate((aggregate: any) => ({
+        count: aggregate.count(),
+        sum: aggregate.sum('rating'),
+      }));
+      for (const row of grouped) {
+        aggregates.set(row.mateId, { count: Number(row.count), sum: Number(row.sum ?? 0) });
+      }
+      return aggregates;
+    }
+
+    const reviews = await rowsByIds(model, 'mateId', mateIds);
+    for (const review of reviews) {
+      const current = aggregates.get(review.mateId) ?? { count: 0, sum: 0 };
+      current.count += 1;
+      current.sum += Number(review.rating);
+      aggregates.set(review.mateId, current);
+    }
+    return aggregates;
   }
 
   private groupIds(rows: any[], groupField: string, valueField: string): Map<number, Set<number>> {

@@ -6,7 +6,7 @@ import {
   IsPositive,
   Max,
   Min,
-  IsDateString,
+  Matches,
 } from 'class-validator';
 
 const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'] as const;
@@ -29,15 +29,15 @@ export class ListBookingsQueryDto {
   renterId?: number;
 
   @IsOptional()
-  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
   date?: string;
 
   @IsOptional()
-  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
   dateFrom?: string;
 
   @IsOptional()
-  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
   dateTo?: string;
 
   @IsOptional()

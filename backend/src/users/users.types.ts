@@ -17,6 +17,11 @@ export type UserDatabase = {
       User: {
         where(filters: UserFilter): Pick<UserQuery, 'first' | 'update'>;
       };
+      RefreshToken?: {
+        where(filters: Record<string, unknown>): {
+          update(data: Record<string, unknown>): Promise<unknown>;
+        };
+      };
     };
   };
 };

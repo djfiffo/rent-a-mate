@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { MATES_DATABASE_TOKEN } from './mates.tokens.js';
 import { averageRating, modelRows, rowsByIds, type DiscoveryDatabase } from './mate-discovery.shared.js';
+import { requirePublicMate } from './mate-visibility.js';
 
 export interface PublicMateDetail {
   id: number;
@@ -26,11 +27,9 @@ export class MateDetailService {
 
   async findOne(mateId: number): Promise<PublicMateDetail> {
     const tables = this.database.orm.public;
-    const mate = (await modelRows(tables.Mate, { id: mateId }))[0];
-    if (!mate || mate.isActive === false) throw new NotFoundException('Mate not found');
+    const { mate, owner } = await requirePublicMate(this.database, mateId);
 
-    const [user, province, district, activityLinks, interestLinks, photos, reviews] = await Promise.all([
-      modelRows(tables.User, { id: mate.userId }).then((rows) => rows[0]),
+    const [province, district, activityLinks, interestLinks, photos, reviews] = await Promise.all([
       modelRows(tables.Province, { id: mate.provinceId }).then((rows) => rows[0]),
       modelRows(tables.District, { id: mate.districtId }).then((rows) => rows[0]),
       modelRows(tables.MateActivity, { mateId }),
@@ -39,7 +38,7 @@ export class MateDetailService {
       modelRows(tables.Review, { mateId }),
     ]);
 
-    if (!user || user.isActive === false || user.isBanned === true || !province || !district) {
+    if (!province || !district) {
       throw new NotFoundException('Mate not found');
     }
 
@@ -52,7 +51,7 @@ export class MateDetailService {
 
     return {
       id: mate.id,
-      user: { id: user.id, name: user.name },
+      user: { id: owner.id, name: owner.name },
       age: mate.age ?? null,
       bio: mate.bio ?? null,
       hourlyRate: Number(mate.hourlyRate),
