@@ -36,6 +36,10 @@
       "model": "MateInterest",
       "namespace": "public"
     },
+    "mate_photos": {
+      "model": "MatePhoto",
+      "namespace": "public"
+    },
     "notifications": {
       "model": "Notification",
       "namespace": "public"
@@ -50,6 +54,10 @@
     },
     "refresh_tokens": {
       "model": "RefreshToken",
+      "namespace": "public"
+    },
+    "reports": {
+      "model": "Report",
       "namespace": "public"
     },
     "review": {
@@ -120,6 +128,52 @@
               {
                 "name": "report_resolved",
                 "value": "report_resolved"
+              }
+            ]
+          },
+          "ReportStatus": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "open",
+                "value": "open"
+              },
+              {
+                "name": "reviewed",
+                "value": "reviewed"
+              },
+              {
+                "name": "dismissed",
+                "value": "dismissed"
+              },
+              {
+                "name": "actioned",
+                "value": "actioned"
+              }
+            ]
+          },
+          "ReportTargetType": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "user",
+                "value": "user"
+              },
+              {
+                "name": "mate",
+                "value": "mate"
+              },
+              {
+                "name": "booking",
+                "value": "booking"
+              },
+              {
+                "name": "review",
+                "value": "review"
+              },
+              {
+                "name": "message",
+                "value": "message"
               }
             ]
           },
@@ -711,6 +765,21 @@
                   "namespace": "public"
                 }
               },
+              "photos": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "mateId"
+                  ]
+                },
+                "to": {
+                  "model": "MatePhoto",
+                  "namespace": "public"
+                }
+              },
               "province": {
                 "cardinality": "N:1",
                 "on": {
@@ -1022,6 +1091,93 @@
               },
               "namespaceId": "public",
               "table": "mateInterest"
+            }
+          },
+          "MatePhoto": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "mateId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "sortOrder": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "storageKey": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "url": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "mate": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "mateId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Mate",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "mateId": {
+                  "column": "mateId"
+                },
+                "sortOrder": {
+                  "column": "sortOrder"
+                },
+                "storageKey": {
+                  "column": "storageKey"
+                },
+                "url": {
+                  "column": "url"
+                }
+              },
+              "namespaceId": "public",
+              "table": "mate_photos"
             }
           },
           "Notification": {
@@ -1418,6 +1574,160 @@
               "table": "refresh_tokens"
             }
           },
+          "Report": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "reason": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reporterId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "resolutionNote": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "resolvedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "resolvedById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "ReportStatus",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "targetId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "targetType": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "ReportTargetType",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              }
+            },
+            "relations": {
+              "reporter": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "reporterId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "resolvedBy": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "resolvedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "reason": {
+                  "column": "reason"
+                },
+                "reporterId": {
+                  "column": "reporterId"
+                },
+                "resolutionNote": {
+                  "column": "resolutionNote"
+                },
+                "resolvedAt": {
+                  "column": "resolvedAt"
+                },
+                "resolvedById": {
+                  "column": "resolvedById"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "targetId": {
+                  "column": "targetId"
+                },
+                "targetType": {
+                  "column": "targetType"
+                }
+              },
+              "namespaceId": "public",
+              "table": "reports"
+            }
+          },
           "Review": {
             "fields": {
               "bookingId": {
@@ -1557,8 +1867,29 @@
           },
           "User": {
             "fields": {
+              "banReason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "bannedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "deactivatedAt": {
+                "nullable": true,
                 "type": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "kind": "scalar"
@@ -1575,6 +1906,27 @@
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "isActive": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "isBanned": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "isVerified": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
                   "kind": "scalar"
                 }
               },
@@ -1607,6 +1959,13 @@
               },
               "updatedAt": {
                 "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "verifiedAt": {
+                "nullable": true,
                 "type": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "kind": "scalar"
@@ -1674,6 +2033,36 @@
                   "namespace": "public"
                 }
               },
+              "reportsFiled": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "reporterId"
+                  ]
+                },
+                "to": {
+                  "model": "Report",
+                  "namespace": "public"
+                }
+              },
+              "reportsResolved": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "resolvedById"
+                  ]
+                },
+                "to": {
+                  "model": "Report",
+                  "namespace": "public"
+                }
+              },
               "reviews": {
                 "cardinality": "1:N",
                 "on": {
@@ -1692,14 +2081,32 @@
             },
             "storage": {
               "fields": {
+                "banReason": {
+                  "column": "banReason"
+                },
+                "bannedAt": {
+                  "column": "bannedAt"
+                },
                 "createdAt": {
                   "column": "createdAt"
+                },
+                "deactivatedAt": {
+                  "column": "deactivatedAt"
                 },
                 "email": {
                   "column": "email"
                 },
                 "id": {
                   "column": "id"
+                },
+                "isActive": {
+                  "column": "isActive"
+                },
+                "isBanned": {
+                  "column": "isBanned"
+                },
+                "isVerified": {
+                  "column": "isVerified"
                 },
                 "name": {
                   "column": "name"
@@ -1712,6 +2119,9 @@
                 },
                 "updatedAt": {
                   "column": "updatedAt"
+                },
+                "verifiedAt": {
+                  "column": "verifiedAt"
                 }
               },
               "namespaceId": "public",
@@ -2190,6 +2600,23 @@
                 },
                 {
                   "columns": [
+                    "hourlyRate"
+                  ],
+                  "name": "mate_hourlyRate_idx_da888ad6",
+                  "prefix": "mate_hourlyRate_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "isActive",
+                    "provinceId"
+                  ],
+                  "name": "mate_isActive_provinceId_idx_059e7fd8",
+                  "prefix": "mate_isActive_provinceId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
                     "provinceId"
                   ],
                   "name": "mate_provinceId_idx_a419a0e2",
@@ -2450,6 +2877,90 @@
                 ]
               },
               "uniques": []
+            },
+            "mate_photos": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "mateId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "sortOrder": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "storageKey": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "url": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "mateId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "mate_photos"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "mate"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "mateId"
+                  ],
+                  "name": "mate_photos_mateId_idx_99af79ac",
+                  "prefix": "mate_photos_mateId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "mateId",
+                    "sortOrder"
+                  ]
+                }
+              ]
             },
             "notifications": {
               "checks": [
@@ -2800,6 +3311,181 @@
                 }
               ]
             },
+            "reports": {
+              "checks": [
+                {
+                  "expression": "\"status\" IN ('open', 'reviewed', 'dismissed', 'actioned')",
+                  "name": "reports_status_check_517eeb58",
+                  "prefix": "reports_status_check"
+                },
+                {
+                  "expression": "\"targetType\" IN ('user', 'mate', 'booking', 'review', 'message')",
+                  "name": "reports_targetType_check_14f7bc86",
+                  "prefix": "reports_targetType_check"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "reason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reporterId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "resolutionNote": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "resolvedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "resolvedById": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "open"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "ReportStatus",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "targetId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "targetType": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "ReportTargetType",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "reporterId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "reports"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "resolvedById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "reports"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "reporterId",
+                    "createdAt"
+                  ],
+                  "name": "reports_reporterId_createdAt_idx_468b5f4f",
+                  "prefix": "reports_reporterId_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "reporterId"
+                  ],
+                  "name": "reports_reporterId_idx_aa245831",
+                  "prefix": "reports_reporterId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "resolvedById"
+                  ],
+                  "name": "reports_resolvedById_idx_fc75edc7",
+                  "prefix": "reports_resolvedById_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "status",
+                    "createdAt"
+                  ],
+                  "name": "reports_status_createdAt_idx_58610442",
+                  "prefix": "reports_status_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "targetType",
+                    "targetId"
+                  ],
+                  "name": "reports_targetType_targetId_idx_7a5ee9cb",
+                  "prefix": "reports_targetType_targetId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "review": {
               "columns": {
                 "bookingId": {
@@ -2945,6 +3631,16 @@
                 }
               ],
               "columns": {
+                "banReason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "bannedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "default": {
@@ -2953,6 +3649,11 @@
                   },
                   "nativeType": "timestamptz",
                   "nullable": false
+                },
+                "deactivatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
                 },
                 "email": {
                   "codecId": "pg/text@1",
@@ -2966,6 +3667,33 @@
                     "kind": "function"
                   },
                   "nativeType": "int4",
+                  "nullable": false
+                },
+                "isActive": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "isBanned": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "isVerified": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
                   "nullable": false
                 },
                 "name": {
@@ -2997,10 +3725,34 @@
                   },
                   "nativeType": "timestamptz",
                   "nullable": false
+                },
+                "verifiedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
                 }
               },
               "foreignKeys": [],
-              "indexes": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "isActive",
+                    "isBanned"
+                  ],
+                  "name": "user_isActive_isBanned_idx_e0b27a9f",
+                  "prefix": "user_isActive_isBanned_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "role",
+                    "createdAt"
+                  ],
+                  "name": "user_role_createdAt_idx_174bf716",
+                  "prefix": "user_role_createdAt_idx",
+                  "unique": false
+                }
+              ],
               "primaryKey": {
                 "columns": [
                   "id"
@@ -3038,6 +3790,25 @@
                 "report_resolved"
               ]
             },
+            "ReportStatus": {
+              "kind": "valueSet",
+              "values": [
+                "open",
+                "reviewed",
+                "dismissed",
+                "actioned"
+              ]
+            },
+            "ReportTargetType": {
+              "kind": "valueSet",
+              "values": [
+                "user",
+                "mate",
+                "booking",
+                "review",
+                "message"
+              ]
+            },
             "UserRole": {
               "kind": "valueSet",
               "values": [
@@ -3052,7 +3823,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "09625ff0046dd02e1681a6d60f40b18efa3b28b6d8f70413150205fe56240b37"
+    "storageHash": "1ff30a297e1808e24dfa5c88b8d031a5504f9782083b872d11c505c268b80c77"
   },
   "execution": {
     "executionHash": "2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8",

@@ -15,6 +15,7 @@ import type { AuthUser } from '../users/users.types.js';
 import { AdminService } from './admin.service.js';
 import type {
   AdminBookingItem,
+  AdminReport,
   AdminSafeUser,
   AnalyticsResult,
   PaginatedResult,
@@ -23,6 +24,8 @@ import { AnalyticsQueryDto } from './dto/analytics-query.dto.js';
 import { BanUserDto } from './dto/ban-user.dto.js';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto.js';
 import { ListUsersQueryDto } from './dto/list-users-query.dto.js';
+import { ListReportsQueryDto } from './dto/list-reports-query.dto.js';
+import { ResolveReportDto } from './dto/resolve-report.dto.js';
 import { Roles } from './roles.decorator.js';
 import { RolesGuard } from './roles.guard.js';
 
@@ -92,6 +95,24 @@ export class AdminController {
     @Query() query: AnalyticsQueryDto,
   ): Promise<ApiResponse<AnalyticsResult>> {
     return this.success('OK', await this.adminService.getAnalytics(query));
+  }
+
+  @Get('reports')
+  async listReports(
+    @Query() query: ListReportsQueryDto,
+  ): Promise<ApiResponse<PaginatedResult<AdminReport>>> {
+    return this.success('OK', await this.adminService.listReports(query));
+  }
+
+  @Patch('reports/:reportId')
+  async resolveReport(
+    @CurrentUser() admin: AuthUser | undefined,
+    @Param('reportId', ParseIntPipe) reportId: number,
+    @Body() dto: ResolveReportDto,
+  ): Promise<ApiResponse<{ report: AdminReport }>> {
+    const adminId = this.requireAdminId(admin);
+    const report = await this.adminService.resolveReport(adminId, reportId, dto);
+    return this.success('Report resolved', { report });
   }
 
   private success<T>(message: string, data: T): ApiResponse<T> {

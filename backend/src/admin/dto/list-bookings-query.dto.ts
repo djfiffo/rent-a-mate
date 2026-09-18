@@ -6,6 +6,7 @@ import {
   IsPositive,
   Max,
   Min,
+  IsDateString,
 } from 'class-validator';
 
 const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'] as const;
@@ -26,6 +27,18 @@ export class ListBookingsQueryDto {
   @IsInt()
   @IsPositive()
   renterId?: number;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
 
   @IsOptional()
   @Type(() => Number)

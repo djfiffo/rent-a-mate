@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  IsDateString,
   Length,
   Matches,
   Max,
@@ -87,6 +88,17 @@ export class ListMatesQueryDto {
   @MaxLength(30)
   @Validate(RateRangeConstraint)
   maxRate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  availableDate?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  @Max(5)
+  minRating?: number;
 
   @IsOptional()
   @IsIn(SORTS)

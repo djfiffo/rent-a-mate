@@ -30,7 +30,7 @@ export class UpdateMateProfileDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber({ allowInfinity: false, allowNaN: false, maxDecimalPlaces: 2 })
-  @Min(0)
+  @Min(0.01)
   hourlyRate?: number;
 
   @IsOptional()

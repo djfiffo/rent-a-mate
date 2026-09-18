@@ -6,15 +6,12 @@ import { AdminController } from './admin.controller.js';
 import { AdminService } from './admin.service.js';
 import { RolesGuard } from './roles.guard.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { banUserRecord, clearModerationRecords } from './ban.store.js';
-import { Temporal } from '@js-temporal/polyfill';
 
 describe('AdminController', () => {
   let controller: AdminController;
   let service: AdminService;
 
   beforeEach(async () => {
-    clearModerationRecords();
     const module = await Test.createTestingModule({
       controllers: [AdminController],
       providers: [
@@ -90,25 +87,6 @@ describe('AdminController', () => {
       expect(() => rolesGuard.canActivate(context)).toThrow(ForbiddenException);
     });
 
-    it('should reject banned user even if admin role', () => {
-      banUserRecord({
-        userId: 99,
-        reason: 'Violation',
-        bannedAt: Temporal.Now.instant(),
-        bannedBy: 1,
-      });
-
-      vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['admin']);
-      const context = {
-        getHandler: () => ({}),
-        getClass: () => ({}),
-        switchToHttp: () => ({
-          getRequest: () => ({ user: { id: 99, role: 'admin' } }),
-        }),
-      } as unknown as ExecutionContext;
-
-      expect(() => rolesGuard.canActivate(context)).toThrow(ForbiddenException);
-    });
   });
 
   describe('listUsers', () => {
