@@ -65,6 +65,7 @@ model User {
 
   refreshTokens RefreshToken[]
   notifications Notification[]
+  sentMessages  Message[]
 
   @@index([role, createdAt])
   @@index([isActive, isBanned])
@@ -212,6 +213,7 @@ model Booking {
   payment       Payment?
   review        Review?
   notifications Notification[]
+  messages      Message[]
 
   @@index([mateId, date, status])
   @@index([renterId, createdAt])
@@ -260,6 +262,21 @@ model Notification {
 
   @@index([userId, isRead, createdAt])
   @@map("notifications")
+}
+
+model Message {
+  id        Int       @id @default(autoincrement())
+  bookingId Int
+  senderId  Int
+  content   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  sender  User    @relation(fields: [senderId], references: [id])
+
+  @@index([bookingId, createdAt])
+  @@map("messages")
 }
 
 model RefreshToken {
