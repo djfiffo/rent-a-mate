@@ -81,6 +81,7 @@ function createFixture() {
     { id: 6, name: 'Inactive Mate User', role: 'mate' },
     { id: 7, name: 'Renter User', role: 'renter' },
     { id: 8, name: 'Other Renter', role: 'renter' },
+    { id: 55, name: 'Another Mate User', role: 'mate' },
   ];
   const bookingRows: Row[] = [];
   const notificationRows: Row[] = [];
@@ -111,7 +112,7 @@ function createFixture() {
 
   const service = new BookingsService(database, mateAvailabilityService as never, notificationsService);
 
-  return { service, database, mateRows, bookingRows, notificationRows, mateAvailabilityService };
+  return { service, database, mateRows, userRows, bookingRows, notificationRows, mateAvailabilityService };
 }
 
 describe('BookingsService', () => {
@@ -147,6 +148,11 @@ describe('BookingsService', () => {
       await expect(fixture.service.create(7, { ...dto, mateId: 4 })).rejects.toBeInstanceOf(
         UnprocessableEntityException,
       );
+    });
+
+    it('rejects booking a mate whose owning user is banned', async () => {
+      fixture.userRows.find((user) => user.id === 5)!.isBanned = true;
+      await expect(fixture.service.create(7, dto)).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('rejects when the activity does not exist', async () => {

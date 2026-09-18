@@ -1,3 +1,8 @@
+/**
+ * Compatibility surface for older callers. Moderation state is persisted on
+ * User now; this module intentionally does not retain process-local state.
+ * Services and guards must query User.isBanned/isActive/isVerified directly.
+ */
 import type { Temporal } from '@js-temporal/polyfill';
 
 export interface BanRecord {
@@ -7,54 +12,26 @@ export interface BanRecord {
   bannedBy: number;
 }
 
-const bannedUsers = new Map<number, BanRecord>();
-const deactivatedUsers = new Set<number>();
-const verifiedUsers = new Set<number>();
-
-export const banUserRecord = (record: BanRecord): void => {
-  bannedUsers.set(record.userId, record);
-};
-
-export const unbanUserRecord = (userId: number): boolean => {
-  return bannedUsers.delete(userId);
-};
-
-export const isUserBanned = (userId: number): boolean => {
-  return bannedUsers.has(userId);
-};
-
-export const getBanRecord = (userId: number): BanRecord | undefined => {
-  return bannedUsers.get(userId);
-};
-
-export const activateUserRecord = (userId: number): void => {
-  deactivatedUsers.delete(userId);
-};
-
-export const deactivateUserRecord = (userId: number): void => {
-  deactivatedUsers.add(userId);
-};
-
-export const isUserActive = (userId: number): boolean => {
-  return !deactivatedUsers.has(userId);
-};
-
-export const verifyUserRecord = (userId: number): void => {
-  verifiedUsers.add(userId);
-};
-
-export const unverifyUserRecord = (userId: number): void => {
-  verifiedUsers.delete(userId);
-};
-
-export const isUserVerified = (userId: number): boolean => {
-  return verifiedUsers.has(userId);
-};
-
-export const clearModerationRecords = (): void => {
-  bannedUsers.clear();
-  deactivatedUsers.clear();
-  verifiedUsers.clear();
-};
-
+/** @deprecated Persist moderation changes through AdminService. */
+export const banUserRecord = (_record: BanRecord): void => undefined;
+/** @deprecated Persist moderation changes through AdminService. */
+export const unbanUserRecord = (_userId: number): boolean => false;
+/** @deprecated Read moderation state from User. */
+export const isUserBanned = (_userId: number): boolean => false;
+/** @deprecated Ban metadata is persisted on User. */
+export const getBanRecord = (_userId: number): BanRecord | undefined => undefined;
+/** @deprecated Persist moderation changes through AdminService. */
+export const activateUserRecord = (_userId: number): void => undefined;
+/** @deprecated Persist moderation changes through AdminService. */
+export const deactivateUserRecord = (_userId: number): void => undefined;
+/** @deprecated Read moderation state from User. */
+export const isUserActive = (_userId: number): boolean => true;
+/** @deprecated Persist moderation changes through AdminService. */
+export const verifyUserRecord = (_userId: number): void => undefined;
+/** @deprecated Persist moderation changes through AdminService. */
+export const unverifyUserRecord = (_userId: number): void => undefined;
+/** @deprecated Read moderation state from User. */
+export const isUserVerified = (_userId: number): boolean => false;
+/** @deprecated No process-local state remains. */
+export const clearModerationRecords = (): void => undefined;
 export const clearBanRecords = clearModerationRecords;

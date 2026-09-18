@@ -20,14 +20,15 @@ export class CreateMateProfileDto {
   age!: number;
 
   @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
+  @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(2000)
-  bio!: string;
+  bio?: string;
 
   @Type(() => Number)
   @IsNumber({ allowInfinity: false, allowNaN: false, maxDecimalPlaces: 2 })
-  @Min(0)
+  @Min(0.01)
   hourlyRate!: number;
 
   @Type(() => Number)
@@ -40,19 +41,17 @@ export class CreateMateProfileDto {
   @Min(1)
   districtId!: number;
 
-  @IsOptional()
   @IsArray()
   @ArrayUnique()
   @IsInt({ each: true })
   @Min(1, { each: true })
   @Type(() => Number)
-  activityIds?: number[];
+  activityIds!: number[];
 
-  @IsOptional()
   @IsArray()
   @ArrayUnique()
   @IsInt({ each: true })
   @Min(1, { each: true })
   @Type(() => Number)
-  interestIds?: number[];
+  interestIds!: number[];
 }

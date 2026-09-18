@@ -1,10 +1,15 @@
-import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+	ConflictException,
+	ForbiddenException,
+	Injectable,
+	NotFoundException,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Temporal } from '@js-temporal/polyfill';
-import bcrypt from 'bcrypt';
 import { createHash, randomUUID } from 'node:crypto';
 import { db } from '../prisma/db.js';
-import { isUserBanned } from '../admin/ban.store.js';
+import { PasswordHashService } from '../users/password.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 
@@ -17,26 +22,38 @@ type AuthTokenPayload = {
 
 type TokenStorage = Pick<typeof db, 'orm'>;
 
-const ACCESS_TOKEN_TTL = '2h';
+const ACCESS_TOKEN_TTL = process.env['JWT_ACCESS_TTL'] ?? '15m';
 const REFRESH_TOKEN_TTL = '30d';
 
 @Injectable()
 export class AuthService {
-	constructor(private readonly jwtService: JwtService) {}
+	constructor(
+		private readonly jwtService: JwtService,
+		private readonly passwordService: PasswordHashService,
+	) {}
 
 	async register(dto: RegisterDto) {
-		const existingUser = await db.orm.public.User.where({ email: dto.email }).first();
+		const email = dto.email.trim().toLowerCase();
+		const existingUser = await db.orm.public.User.where({ email }).first();
 		if (existingUser) {
 			throw new ConflictException('Email is already registered');
 		}
 
-		const password = await bcrypt.hash(dto.password, 12);
-		const user = await db.orm.public.User.create({
-			name: dto.name,
-			email: dto.email,
-			password,
-			role: dto.role,
-		});
+		const password = await this.passwordService.hash(dto.password);
+		let user: any;
+		try {
+			user = await db.orm.public.User.create({
+				name: dto.name,
+				email,
+				password,
+				role: dto.role,
+			});
+		} catch (error) {
+			if (isUniqueConstraintError(error)) {
+				throw new ConflictException('Email is already registered');
+			}
+			throw error;
+		}
 
 		return {
 			status: 'success',
@@ -46,13 +63,16 @@ export class AuthService {
 	}
 
 	async login(dto: LoginDto) {
-		const user = await db.orm.public.User.where({ email: dto.email }).first();
-		if (!user || !(await bcrypt.compare(dto.password, user.password))) {
+		const user = await db.orm.public.User.where({ email: dto.email.trim().toLowerCase() }).first();
+		if (!user || !(await this.passwordService.verify(dto.password, user.password))) {
 			throw new UnauthorizedException('Invalid email or password');
 		}
 
-		if (isUserBanned(user.id)) {
+		if (user.isBanned) {
 			throw new ForbiddenException('Account is banned');
+		}
+		if (!user.isActive) {
+			throw new ForbiddenException('Account is inactive');
 		}
 
 		const tokens = await this.issueTokenPair(user.id, user.role);
@@ -81,6 +101,14 @@ export class AuthService {
 				!this.isRefreshTokenUsable(storedToken, refreshToken, payload.sub)
 			) {
 				throw new UnauthorizedException('Invalid refresh token');
+			}
+
+			const user = await tx.orm.public.User.where({ id: storedToken.userId }).first();
+			if (!user || user.isBanned) {
+				throw new ForbiddenException('Account is banned');
+			}
+			if (!user.isActive) {
+				throw new ForbiddenException('Account is inactive');
 			}
 
 			const newJti = randomUUID();
@@ -124,6 +152,19 @@ export class AuthService {
 		};
 	}
 
+	async me(userId: number | undefined) {
+		if (!Number.isInteger(userId) || (userId ?? 0) <= 0) {
+			throw new UnauthorizedException('Authenticated user is required');
+		}
+		const user = await db.orm.public.User.where({ id: userId }).first();
+		if (!user) throw new NotFoundException('User not found');
+		return {
+			status: 'success' as const,
+			message: 'Current user retrieved',
+			data: { user: this.toPublicUser(user) },
+		};
+	}
+
 	private readonly accessSecret = process.env['JWT_ACCESS_SECRET'];
 
 	private readonly refreshSecret = process.env['JWT_REFRESH_SECRET'];
@@ -152,7 +193,7 @@ export class AuthService {
 			},
 			{
 				secret: this.accessSecret,
-				expiresIn: ACCESS_TOKEN_TTL,
+				expiresIn: ACCESS_TOKEN_TTL as any,
 			},
 		);
 		const refreshToken = await this.jwtService.signAsync(
@@ -246,4 +287,8 @@ export class AuthService {
 			role: user.role,
 		};
 	}
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+	return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 }

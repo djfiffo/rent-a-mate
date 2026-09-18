@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from './roles.decorator.js';
-import { isUserBanned } from './ban.store.js';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -20,10 +19,6 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<{ user?: { id?: number; role?: string } }>();
     const user = request.user;
-
-    if (user?.id && isUserBanned(user.id)) {
-      throw new ForbiddenException('Account is banned');
-    }
 
     if (!requiredRoles || requiredRoles.length === 0) {
       return true;

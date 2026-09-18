@@ -1,13 +1,26 @@
 export interface MateRecord {
   id: number;
   userId: number;
-  age: number;
-  bio: string;
+  age: number | null;
+  bio: string | null;
   hourlyRate: number;
   provinceId: number;
   districtId: number;
+  profileImageUrl?: string | null;
+  profileImageKey?: string | null;
+  isActive?: boolean;
+  deactiveAt?: unknown | null;
   createdAt: unknown;
   updatedAt: unknown;
+}
+
+export interface MatePhotoRecord {
+  id: number;
+  mateId: number;
+  url: string;
+  storageKey: string | null;
+  sortOrder: number;
+  createdAt: unknown;
 }
 
 export interface MateLookup {
@@ -18,13 +31,17 @@ export interface MateLookup {
 export interface MateProfile {
   id: number;
   user: { id: number; name: string };
-  age: number;
-  bio: string;
+  age: number | null;
+  bio: string | null;
   hourlyRate: number;
+  isActive: boolean;
+  deactivatedAt: unknown | null;
   province: MateLookup;
   district: MateLookup;
   activities: MateLookup[];
   interests: MateLookup[];
+  photos: MatePhotoRecord[];
+  availability: MateAvailabilityRecord[];
   createdAt: unknown;
   updatedAt: unknown;
 }
@@ -42,6 +59,15 @@ interface Model<T> {
   create(data: Record<string, unknown>): Promise<T>;
 }
 
+export interface MateQueryRecord {
+  id: number;
+  mateId: number;
+  date: unknown;
+  startTime: unknown;
+  endTime: unknown;
+  status: string;
+}
+
 interface MateOrm {
   User: Model<{ id: number; name: string }>;
   Mate: Model<MateRecord>;
@@ -52,6 +78,8 @@ interface MateOrm {
   MateActivity: Model<{ mateId: number; activityId: number }>;
   MateInterest: Model<{ mateId: number; interestId: number }>;
   MateAvailability: Model<MateAvailabilityRecord>;
+  MatePhoto: Model<MatePhotoRecord>;
+  Booking: Model<MateQueryRecord>;
 }
 
 export interface MateDatabase {
@@ -76,4 +104,3 @@ export interface MateAvailabilityRecord {
   createdAt: unknown;
   updatedAt: unknown;
 }
-

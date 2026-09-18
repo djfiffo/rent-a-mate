@@ -12,6 +12,8 @@ describe('normalizeMateDiscoveryQuery', () => {
       interestId: ['3'],
       minRate: '200',
       maxRate: '500',
+      availableDate: '2026-09-12',
+      minRating: '4.5',
     });
 
     expect(normalizeMateDiscoveryQuery(input)).toEqual({
@@ -22,6 +24,8 @@ describe('normalizeMateDiscoveryQuery', () => {
       districtId: undefined,
       minRate: '200',
       maxRate: '500',
+      availableDate: '2026-09-12',
+      minRating: 4.5,
       sort: '-createdAt',
       page: 1,
       limit: 20,

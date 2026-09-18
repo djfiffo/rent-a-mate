@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Temporal } from '@js-temporal/polyfill';
 import { DATABASE_TOKEN, PASSWORD_SERVICE } from './users.tokens.js';
 import type { ChangeEmailDto, ChangePasswordDto, UpdateProfileDto } from './dto/index.js';
 import type { PasswordService, SafeUser, UserDatabase, UserRecord } from './users.types.js';
@@ -50,7 +51,12 @@ export class UsersService {
     const user = await this.requireUser(userId);
     await this.verifyCurrentPassword(user.password, input.currentPassword);
     const password = await this.passwordService.hash(input.newPassword);
-    return this.toSafeUser(await this.database.orm.public.User.where({ id: userId }).update({ password }));
+    const updated = await this.database.orm.public.User.where({ id: userId }).update({ password });
+    const refreshTokens = this.database.orm.public.RefreshToken;
+    if (refreshTokens) {
+      await refreshTokens.where({ userId, revokedAt: null }).update({ revokedAt: Temporal.Now.instant() });
+    }
+    return this.toSafeUser(updated);
   }
 
   private async requireUser(userId: number): Promise<UserRecord> {

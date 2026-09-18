@@ -30,14 +30,16 @@ function createFixture() {
     }),
     update,
   }));
+  const revokeRefreshTokens = vi.fn().mockResolvedValue(1);
+  const refreshTokenWhere = vi.fn(() => ({ update: revokeRefreshTokens }));
   const database: UserDatabase = {
-    orm: { public: { User: { where } } },
+    orm: { public: { User: { where }, RefreshToken: { where: refreshTokenWhere } } },
   };
   const passwordService: PasswordService = {
     verify: vi.fn(async (plainText: string) => plainText === 'current-password'),
     hash: vi.fn(async () => 'new-password-hash'),
   };
-  return { service: new UsersService(database, passwordService), where, update, passwordService };
+  return { service: new UsersService(database, passwordService), where, update, passwordService, refreshTokenWhere, revokeRefreshTokens };
 }
 
 describe('UsersService', () => {
@@ -87,5 +89,15 @@ describe('UsersService', () => {
       currentPassword: 'wrong-password',
       newPassword: 'new-password-value',
     })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('revokes active refresh sessions after changing the password', async () => {
+    await fixture.service.changePassword(7, {
+      currentPassword: 'current-password',
+      newPassword: 'new-password-value',
+    });
+
+    expect(fixture.refreshTokenWhere).toHaveBeenCalledWith({ userId: 7, revokedAt: null });
+    expect(fixture.revokeRefreshTokens).toHaveBeenCalledWith({ revokedAt: expect.anything() });
   });
 });
