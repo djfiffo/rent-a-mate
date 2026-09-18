@@ -16,6 +16,8 @@ export const normalizeMateDiscoveryQuery = (input: ListMatesQueryDto): MateDisco
     districtId: input.districtId,
     minRate: input.minRate,
     maxRate: input.maxRate,
+    availableDate: input.availableDate,
+    minRating: input.minRating,
     sort: input.sort ?? DEFAULT_SORT,
     page,
     limit,

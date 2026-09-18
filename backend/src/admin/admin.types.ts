@@ -10,6 +10,23 @@ export interface AdminSafeUser {
   updatedAt: unknown;
 }
 
+export type ReportTargetType = 'user' | 'mate' | 'booking' | 'review' | 'message';
+export type ReportStatus = 'open' | 'reviewed' | 'dismissed' | 'actioned';
+
+export interface AdminReport {
+  id: number;
+  reporterId: number;
+  reporter: { id: number; name: string };
+  targetType: ReportTargetType;
+  targetId: number;
+  reason: string;
+  status: ReportStatus;
+  resolutionNote: string | null;
+  resolvedById: number | null;
+  resolvedAt: unknown;
+  createdAt: unknown;
+}
+
 export interface PaginationMeta {
   page: number;
   limit: number;

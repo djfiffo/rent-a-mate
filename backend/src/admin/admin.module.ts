@@ -3,11 +3,12 @@ import { Reflector } from '@nestjs/core';
 import { AuthModule } from '../auth/auth.module.js';
 import { AdminController } from './admin.controller.js';
 import { AdminService } from './admin.service.js';
+import { ReportsController } from './reports.controller.js';
 import { RolesGuard } from './roles.guard.js';
 
 @Module({
   imports: [AuthModule],
-  controllers: [AdminController],
+  controllers: [AdminController, ReportsController],
   providers: [AdminService, RolesGuard, Reflector],
   exports: [RolesGuard],
 })

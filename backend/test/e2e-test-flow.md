@@ -213,7 +213,7 @@ export async function seedTestDatabase() {
   // Set availability (mate1 available 09:00-18:00 every day)
   await db.orm.public.MateAvailability.create({
     mateId: mate1.id,
-    dayOfWeek: 0, // Sunday
+    dayOfWeek: 7, // Sunday (ISO weekday numbering)
     startTime: '09:00',
     endTime: '18:00',
   });

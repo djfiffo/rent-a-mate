@@ -2,7 +2,7 @@ import { db } from '../../src/prisma/db.js';
 import bcrypt from 'bcrypt';
 import { Temporal } from '@js-temporal/polyfill';
 import type { UserRecord } from '../../src/users/users.types.js';
-import type { BookingRecord, MateRecordForBooking, ActivityRecordForBooking } from '../../src/bookings/bookings.types.js';
+import type { ActivityRecordForBooking } from '../../src/bookings/bookings.types.js';
 import type { NotificationRecord } from '../../src/notifications/notifications.types.js';
 
 /**
@@ -122,7 +122,7 @@ export async function seedTestDatabase(): Promise<TestData> {
   });
 
   // Set availability for mate1 (09:00-18:00 every day)
-  const daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
+  const daysOfWeek = [1, 2, 3, 4, 5, 6, 7];
   for (const day of daysOfWeek) {
     await db.orm.public.MateAvailability.create({
       mateId: mate1.id,
@@ -175,6 +175,7 @@ export async function cleanupTestDatabase(): Promise<void> {
   await db.orm.public.RefreshToken.where((rt) => rt.userId.gt(0)).deleteAndCount();
   await db.orm.public.Payment.where((p) => p.id.gt(0)).deleteAndCount();
   await db.orm.public.Review.where((r) => r.id.gt(0)).deleteAndCount();
+  await db.orm.public.Report.where((r) => r.id.gt(0)).deleteAndCount();
   await db.orm.public.Notification.where((n) => n.id.gt(0)).deleteAndCount();
 
   await db.orm.public.Booking.where((b) => b.id.gt(0)).deleteAndCount();
@@ -183,6 +184,7 @@ export async function cleanupTestDatabase(): Promise<void> {
     db.orm.public.MateAvailability.where((ma) => ma.id.gt(0)).deleteAndCount(),
     db.orm.public.MateActivity.where((ma) => ma.mateId.gt(0)).deleteAndCount(),
     db.orm.public.MateInterest.where((mi) => mi.mateId.gt(0)).deleteAndCount(),
+    db.orm.public.MatePhoto.where((photo) => photo.id.gt(0)).deleteAndCount(),
   ]);
 
   await db.orm.public.Mate.where((m) => m.id.gt(0)).deleteAndCount();

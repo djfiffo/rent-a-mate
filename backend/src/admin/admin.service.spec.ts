@@ -1,13 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AdminService } from './admin.service.js';
 import { ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import {
-  clearModerationRecords,
-  getBanRecord,
-  isUserActive,
-  isUserBanned,
-  isUserVerified,
-} from './ban.store.js';
 
 // Mock the db module — vi.mock is hoisted, so import Temporal inside the factory
 vi.mock('../prisma/db.js', async () => {
@@ -16,9 +9,9 @@ vi.mock('../prisma/db.js', async () => {
   const yesterday = now.subtract({ hours: 24 });
 
   const mockUsers = [
-    { id: 1, name: 'Admin', email: 'admin@test.com', role: 'admin', password: 'hash', createdAt: now, updatedAt: now },
-    { id: 2, name: 'John Renter', email: 'john@test.com', role: 'renter', password: 'hash', createdAt: yesterday, updatedAt: yesterday },
-    { id: 3, name: 'Jane Mate', email: 'jane@test.com', role: 'mate', password: 'hash', createdAt: yesterday, updatedAt: yesterday },
+    { id: 1, name: 'Admin', email: 'admin@test.com', role: 'admin', password: 'hash', isActive: true, isBanned: false, isVerified: false, createdAt: now, updatedAt: now },
+    { id: 2, name: 'John Renter', email: 'john@test.com', role: 'renter', password: 'hash', isActive: true, isBanned: false, isVerified: false, createdAt: yesterday, updatedAt: yesterday },
+    { id: 3, name: 'Jane Mate', email: 'jane@test.com', role: 'mate', password: 'hash', isActive: true, isBanned: false, isVerified: false, createdAt: yesterday, updatedAt: yesterday },
   ];
 
   const mockMates = [
@@ -97,6 +90,12 @@ vi.mock('../prisma/db.js', async () => {
               if (typeof filter === 'object' && filter !== null && 'id' in filter) {
                 return {
                   first: vi.fn(() => Promise.resolve(mockUsers.find((u) => u.id === filter.id) ?? null)),
+                  update: vi.fn(async (data: Record<string, unknown>) => {
+                    const user = mockUsers.find((candidate) => candidate.id === filter.id);
+                    if (!user) return null;
+                    Object.assign(user, data);
+                    return user;
+                  }),
                 };
               }
               return createQueryMock(mockUsers).where(filter);
@@ -141,7 +140,6 @@ describe('AdminService', () => {
   let service: AdminService;
 
   beforeEach(() => {
-    clearModerationRecords();
     service = new AdminService();
   });
 
@@ -186,16 +184,13 @@ describe('AdminService', () => {
       await expect(service.banUser(1, 999, 'reason')).rejects.toThrow(NotFoundException);
     });
 
-    it('should return safe user on successful ban and record in BanStore', async () => {
+    it('should return a persisted banned user state', async () => {
       const result = await service.banUser(1, 2, 'Terms of service violation');
       expect(result.id).toBe(2);
       expect(result.isBanned).toBe(true);
       expect(result).not.toHaveProperty('password');
 
-      expect(isUserBanned(2)).toBe(true);
-      const record = getBanRecord(2);
-      expect(record?.reason).toBe('Terms of service violation');
-      expect(record?.bannedBy).toBe(1);
+      expect(result.isBanned).toBe(true);
     });
   });
 
@@ -204,14 +199,12 @@ describe('AdminService', () => {
       await expect(service.unbanUser(999)).rejects.toThrow(NotFoundException);
     });
 
-    it('should return safe user and remove from BanStore', async () => {
+    it('should return a persisted unbanned user state', async () => {
       await service.banUser(1, 2, 'Violation');
-      expect(isUserBanned(2)).toBe(true);
 
       const result = await service.unbanUser(2);
       expect(result.id).toBe(2);
       expect(result.isBanned).toBe(false);
-      expect(isUserBanned(2)).toBe(false);
     });
   });
 
@@ -229,7 +222,7 @@ describe('AdminService', () => {
       expect(result.id).toBe(3);
       expect(result.role).toBe('mate');
       expect(result.isVerified).toBe(true);
-      expect(isUserVerified(3)).toBe(true);
+      expect(result.isVerified).toBe(true);
     });
   });
 
@@ -242,7 +235,7 @@ describe('AdminService', () => {
       const result = await service.activateUser(3);
       expect(result.id).toBe(3);
       expect(result.isActive).toBe(true);
-      expect(isUserActive(3)).toBe(true);
+      expect(result.isActive).toBe(true);
     });
   });
 
