@@ -85,6 +85,7 @@ function createFixture() {
   ];
   const bookingRows: Row[] = [];
   const notificationRows: Row[] = [];
+  const paymentRows: Row[] = [];
 
   const mateTable = createTable(mateRows, 'id', { value: 100 });
   const activityTable = createTable(activityRows, 'id', { value: 100 });
@@ -92,6 +93,7 @@ function createFixture() {
   const userTable = createTable(userRows, 'id', { value: 100 });
   const bookingTable = createTable(bookingRows, 'id', { value: 1 });
   const notificationTable = createTable(notificationRows, 'id', { value: 1 });
+  const paymentTable = createTable(paymentRows, 'id', { value: 1 });
 
   const database: BookingDatabase = {
     orm: {
@@ -101,6 +103,7 @@ function createFixture() {
         Activity: activityTable as never,
         User: userTable as never,
         MateActivity: mateActivityTable as never,
+        Payment: paymentTable as never,
         Notification: notificationTable as never,
       },
     },
@@ -109,10 +112,19 @@ function createFixture() {
 
   const notificationsService = new NotificationsService(database as unknown as NotificationDatabase);
   const mateAvailabilityService = { isWithinAvailability: vi.fn().mockResolvedValue(true) };
+  // `refund()` is exercised directly by `PaymentsService`'s own tests — here
+  // it is stubbed as a no-op (nothing paid, nothing to refund) so
+  // BookingsService.cancel() tests can focus on booking/notification state.
+  const paymentsService = { refund: vi.fn().mockResolvedValue(null) };
 
-  const service = new BookingsService(database, mateAvailabilityService as never, notificationsService);
+  const service = new BookingsService(
+    database,
+    mateAvailabilityService as never,
+    notificationsService,
+    paymentsService as never,
+  );
 
-  return { service, database, mateRows, userRows, bookingRows, notificationRows, mateAvailabilityService };
+  return { service, database, mateRows, userRows, bookingRows, notificationRows, mateAvailabilityService, paymentsService };
 }
 
 describe('BookingsService', () => {

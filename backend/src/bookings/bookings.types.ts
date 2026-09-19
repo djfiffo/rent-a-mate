@@ -1,5 +1,6 @@
 import type { db } from '../prisma/db.js';
 import type { NotificationCreateInput, NotificationRecord } from '../notifications/notifications.types.js';
+import type { PaymentClient } from '../payments/payments.types.js';
 
 export type BookingClient = typeof db.orm.public.Booking;
 export type BookingFilter = Parameters<BookingClient['where']>[0];
@@ -53,6 +54,17 @@ export type BookingTransaction = {
       };
       MateActivity: {
         where: MateActivityClient['where'];
+      };
+      /**
+       * Not otherwise used by `BookingsService` — added solely so this
+       * transaction handle structurally satisfies `PaymentRefundWriter`,
+       * letting `cancel()` pass its own `tx` into
+       * `PaymentsService.refund(bookingId, tx)` and keep an auto-refund
+       * atomic with the cancellation write, without importing any
+       * payments-module type here.
+       */
+      Payment: {
+        where: PaymentClient['where'];
       };
       Notification: {
         create(data: NotificationCreateInput): Promise<NotificationRecord>;
