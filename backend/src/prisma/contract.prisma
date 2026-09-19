@@ -20,8 +20,18 @@ enum NotificationType {
   booking_cancelled
   booking_completed
   payment_paid
+  payment_failed
+  payment_refunded
   message_received
   report_resolved
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunding
+  refunded
 }
 
 enum ReportTargetType {
@@ -221,16 +231,31 @@ model Booking {
 }
 
 model Payment {
-  id                    Int      @id @default(autoincrement())
-  bookingId             Int      @unique
-  amount                Decimal
-  status                String
-  stripePaymentIntentId String   @unique
-  paidAt                DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @default(now())
+  id                Int           @id @default(autoincrement())
+  bookingId         Int           @unique
+  amount            Decimal
+  status            PaymentStatus
+  // Stripe PaymentIntent id, e.g. "pi_xxx". Nullable/unset until the
+  // PaymentIntent is actually created with Stripe (status=pending).
+  providerReference String?       @unique
+  paidAt            DateTime?
+  failedAt          DateTime?
+  refundedAt        DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @default(now())
 
   booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([status, createdAt])
+}
+
+// Dedupe table for Stripe webhook deliveries — Stripe guarantees at-least-once
+// delivery, so every event.id is recorded here before being processed to make
+// webhook handling idempotent.
+model StripeWebhookEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
 }
 
 model Review {

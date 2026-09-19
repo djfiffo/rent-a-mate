@@ -9,6 +9,8 @@ import { UsersModule } from './users/users.module.js';
 import { MatesModule } from './mates/mates.module.js';
 import { MessagesModule } from './messages/messages.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
+import { WebhooksModule } from './webhooks/webhooks.module.js';
 import { ChatModule } from './chat/chat.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -36,6 +38,8 @@ const observeImports =
     MatesModule,
     MessagesModule,
     NotificationsModule,
+    PaymentsModule,
+    WebhooksModule,
     ChatModule,
   ],
   controllers: [AppController],

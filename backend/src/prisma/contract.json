@@ -68,6 +68,10 @@
       "model": "Review",
       "namespace": "public"
     },
+    "stripeWebhookEvent": {
+      "model": "StripeWebhookEvent",
+      "namespace": "public"
+    },
     "user": {
       "model": "User",
       "namespace": "public"
@@ -126,12 +130,45 @@
                 "value": "payment_paid"
               },
               {
+                "name": "payment_failed",
+                "value": "payment_failed"
+              },
+              {
+                "name": "payment_refunded",
+                "value": "payment_refunded"
+              },
+              {
                 "name": "message_received",
                 "value": "message_received"
               },
               {
                 "name": "report_resolved",
                 "value": "report_resolved"
+              }
+            ]
+          },
+          "PaymentStatus": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "pending",
+                "value": "pending"
+              },
+              {
+                "name": "paid",
+                "value": "paid"
+              },
+              {
+                "name": "failed",
+                "value": "failed"
+              },
+              {
+                "name": "refunding",
+                "value": "refunding"
+              },
+              {
+                "name": "refunded",
+                "value": "refunded"
               }
             ]
           },
@@ -1442,6 +1479,13 @@
                   "kind": "scalar"
                 }
               },
+              "failedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -1456,18 +1500,31 @@
                   "kind": "scalar"
                 }
               },
-              "status": {
-                "nullable": false,
+              "providerReference": {
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
-              "stripePaymentIntentId": {
+              "refundedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "PaymentStatus",
+                  "namespaceId": "public",
+                  "plane": "domain"
                 }
               },
               "updatedAt": {
@@ -1506,17 +1563,23 @@
                 "createdAt": {
                   "column": "createdAt"
                 },
+                "failedAt": {
+                  "column": "failedAt"
+                },
                 "id": {
                   "column": "id"
                 },
                 "paidAt": {
                   "column": "paidAt"
                 },
+                "providerReference": {
+                  "column": "providerReference"
+                },
+                "refundedAt": {
+                  "column": "refundedAt"
+                },
                 "status": {
                   "column": "status"
-                },
-                "stripePaymentIntentId": {
-                  "column": "stripePaymentIntentId"
                 },
                 "updatedAt": {
                   "column": "updatedAt"
@@ -1984,6 +2047,47 @@
               },
               "namespaceId": "public",
               "table": "review"
+            }
+          },
+          "StripeWebhookEvent": {
+            "fields": {
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "processedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "type": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "id": {
+                  "column": "id"
+                },
+                "processedAt": {
+                  "column": "processedAt"
+                },
+                "type": {
+                  "column": "type"
+                }
+              },
+              "namespaceId": "public",
+              "table": "stripeWebhookEvent"
             }
           },
           "User": {
@@ -3210,8 +3314,8 @@
             "notifications": {
               "checks": [
                 {
-                  "expression": "\"type\" IN ('booking_requested', 'booking_confirmed', 'booking_declined', 'booking_cancelled', 'booking_completed', 'payment_paid', 'message_received', 'report_resolved')",
-                  "name": "notifications_type_check_c05ec7ce",
+                  "expression": "\"type\" IN ('booking_requested', 'booking_confirmed', 'booking_declined', 'booking_cancelled', 'booking_completed', 'payment_paid', 'payment_failed', 'payment_refunded', 'message_received', 'report_resolved')",
+                  "name": "notifications_type_check_96cafc4a",
                   "prefix": "notifications_type_check"
                 }
               ],
@@ -3340,6 +3444,13 @@
               "uniques": []
             },
             "payment": {
+              "checks": [
+                {
+                  "expression": "\"status\" IN ('pending', 'paid', 'failed', 'refunding', 'refunded')",
+                  "name": "payment_status_check_f96b3e71",
+                  "prefix": "payment_status_check"
+                }
+              ],
               "columns": {
                 "amount": {
                   "codecId": "pg/numeric@1",
@@ -3360,6 +3471,11 @@
                   "nativeType": "timestamptz",
                   "nullable": false
                 },
+                "failedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
                 "id": {
                   "codecId": "pg/int4@1",
                   "default": {
@@ -3374,15 +3490,26 @@
                   "nativeType": "timestamptz",
                   "nullable": true
                 },
+                "providerReference": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "refundedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
                 "status": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
-                  "nullable": false
-                },
-                "stripePaymentIntentId": {
-                  "codecId": "pg/text@1",
-                  "nativeType": "text",
-                  "nullable": false
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "PaymentStatus",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
                 },
                 "updatedAt": {
                   "codecId": "pg/timestamptz-temporal@1",
@@ -3412,7 +3539,17 @@
                   }
                 }
               ],
-              "indexes": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "status",
+                    "createdAt"
+                  ],
+                  "name": "payment_status_createdAt_idx_58610442",
+                  "prefix": "payment_status_createdAt_idx",
+                  "unique": false
+                }
+              ],
               "primaryKey": {
                 "columns": [
                   "id"
@@ -3426,7 +3563,7 @@
                 },
                 {
                   "columns": [
-                    "stripePaymentIntentId"
+                    "providerReference"
                   ]
                 }
               ]
@@ -3867,6 +4004,37 @@
                 }
               ]
             },
+            "stripeWebhookEvent": {
+              "columns": {
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "processedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "type": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "user": {
               "checks": [
                 {
@@ -4031,8 +4199,20 @@
                 "booking_cancelled",
                 "booking_completed",
                 "payment_paid",
+                "payment_failed",
+                "payment_refunded",
                 "message_received",
                 "report_resolved"
+              ]
+            },
+            "PaymentStatus": {
+              "kind": "valueSet",
+              "values": [
+                "pending",
+                "paid",
+                "failed",
+                "refunding",
+                "refunded"
               ]
             },
             "ReportStatus": {
@@ -4068,7 +4248,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "316e94c99d485974332e7b85687d19f9d1bd2790544b6cb5d253b34419d2aba3"
+    "storageHash": "2fa885b47f2ba8e647d1503ae6ec5f250a63304c2653e6065cacb05683421e23"
   },
   "execution": {
     "executionHash": "2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8",
