@@ -10,6 +10,7 @@ import { MatesModule } from './mates/mates.module.js';
 import { MessagesModule } from './messages/messages.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
+import { ReviewsModule } from './reviews/reviews.module.js';
 import { WebhooksModule } from './webhooks/webhooks.module.js';
 import { ChatModule } from './chat/chat.module.js';
 
@@ -39,6 +40,7 @@ const observeImports =
     MessagesModule,
     NotificationsModule,
     PaymentsModule,
+    ReviewsModule,
     WebhooksModule,
     ChatModule,
   ],
