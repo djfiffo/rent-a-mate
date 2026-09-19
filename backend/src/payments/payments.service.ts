@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { Temporal } from '@js-temporal/polyfill';
 import type { AuthUser } from '../users/users.types.js';
 import type { PaginatedResult } from '../admin/admin.types.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -236,6 +237,114 @@ export class PaymentsService {
     }
 
     return updated;
+  }
+
+  /**
+   * Stripe dedupe check — `StripeWebhookService` calls this before acting
+   * on an event, and `recordWebhookEvent()` after, so a retried delivery
+   * of the same `event.id` is a no-op rather than double-notifying.
+   */
+  async isWebhookEventProcessed(eventId: string): Promise<boolean> {
+    const existing = await this.database.orm.public.StripeWebhookEvent.where({ id: eventId }).first();
+    return existing !== null;
+  }
+
+  async recordWebhookEvent(eventId: string, type: string): Promise<void> {
+    await this.database.orm.public.StripeWebhookEvent.create({ id: eventId, type });
+  }
+
+  /**
+   * Finalizes a payment as `paid` from the `payment_intent.succeeded`
+   * webhook. Idempotent: a payment that is already `paid` is left alone
+   * and no duplicate notification is sent.
+   */
+  async markPaid(providerReference: string): Promise<void> {
+    await this.database.transaction(async (tx) => {
+      const payment = await tx.orm.public.Payment.where({ providerReference }).first();
+      if (!payment || payment.status === 'paid') {
+        return;
+      }
+
+      await tx.orm.public.Payment.where({ providerReference }).update({
+        status: 'paid',
+        paidAt: Temporal.Now.instant(),
+      });
+
+      const booking = await tx.orm.public.Booking.where({ id: payment.bookingId }).first();
+      if (booking) {
+        await this.notificationsService.create(
+          {
+            userId: booking.renterId,
+            type: 'payment_paid',
+            message: 'Your payment was successful.',
+            bookingId: booking.id,
+          },
+          tx,
+        );
+      }
+    });
+  }
+
+  /**
+   * Finalizes a payment as `failed` from the
+   * `payment_intent.payment_failed` webhook.
+   */
+  async markFailed(providerReference: string): Promise<void> {
+    await this.database.transaction(async (tx) => {
+      const payment = await tx.orm.public.Payment.where({ providerReference }).first();
+      if (!payment || payment.status === 'failed') {
+        return;
+      }
+
+      await tx.orm.public.Payment.where({ providerReference }).update({
+        status: 'failed',
+        failedAt: Temporal.Now.instant(),
+      });
+
+      const booking = await tx.orm.public.Booking.where({ id: payment.bookingId }).first();
+      if (booking) {
+        await this.notificationsService.create(
+          {
+            userId: booking.renterId,
+            type: 'payment_failed',
+            message: 'Your payment failed. Please try again.',
+            bookingId: booking.id,
+          },
+          tx,
+        );
+      }
+    });
+  }
+
+  /**
+   * Finalizes a payment as `refunded` from the `charge.refunded` webhook —
+   * the counterpart to `refund()` marking it `refunding` synchronously.
+   */
+  async markRefunded(providerReference: string): Promise<void> {
+    await this.database.transaction(async (tx) => {
+      const payment = await tx.orm.public.Payment.where({ providerReference }).first();
+      if (!payment || payment.status === 'refunded') {
+        return;
+      }
+
+      await tx.orm.public.Payment.where({ providerReference }).update({
+        status: 'refunded',
+        refundedAt: Temporal.Now.instant(),
+      });
+
+      const booking = await tx.orm.public.Booking.where({ id: payment.bookingId }).first();
+      if (booking) {
+        await this.notificationsService.create(
+          {
+            userId: booking.renterId,
+            type: 'payment_refunded',
+            message: 'Your payment has been refunded.',
+            bookingId: booking.id,
+          },
+          tx,
+        );
+      }
+    });
   }
 
   private async buildBookingFilter(user: AuthUser): Promise<Record<string, unknown> | null> {
