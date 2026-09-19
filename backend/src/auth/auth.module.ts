@@ -19,6 +19,6 @@ import { PasswordHashService } from '../users/password.service.js';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, PasswordHashService],
-  exports: [PassportModule],
+  exports: [PassportModule, JwtModule],
 })
 export class AuthModule {}

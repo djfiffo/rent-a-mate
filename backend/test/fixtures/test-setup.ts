@@ -177,6 +177,7 @@ export async function cleanupTestDatabase(): Promise<void> {
   await db.orm.public.Review.where((r) => r.id.gt(0)).deleteAndCount();
   await db.orm.public.Report.where((r) => r.id.gt(0)).deleteAndCount();
   await db.orm.public.Notification.where((n) => n.id.gt(0)).deleteAndCount();
+  await db.orm.public.Message.where((m) => m.id.gt(0)).deleteAndCount();
 
   await db.orm.public.Booking.where((b) => b.id.gt(0)).deleteAndCount();
 
