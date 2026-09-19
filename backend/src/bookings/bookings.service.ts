@@ -12,6 +12,7 @@ import { Temporal } from '@js-temporal/polyfill';
 import { MateAvailabilityService } from '../mates/mate-availability.service.js';
 import { requireBookableMate } from '../mates/mate-visibility.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { PaymentsService } from '../payments/payments.service.js';
 import type { AuthUser } from '../users/users.types.js';
 import type { PaginatedResult } from '../admin/admin.types.js';
 import { BOOKINGS_DATABASE_TOKEN } from './bookings.tokens.js';
@@ -42,6 +43,7 @@ export class BookingsService {
     @Inject(BOOKINGS_DATABASE_TOKEN) private readonly database: BookingDatabase,
     private readonly mateAvailabilityService: MateAvailabilityService,
     private readonly notificationsService: NotificationsService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async create(renterId: number, dto: CreateBookingDto): Promise<CreateBookingResult> {
@@ -261,6 +263,11 @@ export class BookingsService {
       if (!updated) {
         throw new NotFoundException('Booking not found');
       }
+
+      // Auto-refund: only bookings that were already `paid` at cancel time
+      // have anything to refund — `refund()` returns `null` (a no-op) for
+      // bookings that were never paid, or already refunding/refunded.
+      await this.paymentsService.refund(bookingId, tx);
 
       const recipients = new Set<number>([booking.renterId, mate.userId]);
       recipients.delete(user.id);
