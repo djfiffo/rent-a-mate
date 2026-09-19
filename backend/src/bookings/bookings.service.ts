@@ -373,11 +373,16 @@ export class BookingsService {
     const activities = await this.database.orm.public.Activity.where((a) => a.id.in(activityIds)).all();
     const activityMap = new Map(activities.map((activity) => [activity.id, activity]));
 
+    const bookingIds = bookings.map((booking) => booking.id);
+    const reviews = await this.database.orm.public.Review.where((r) => r.bookingId.in(bookingIds)).all();
+    const reviewByBookingId = new Map(reviews.map((review) => [review.bookingId, review]));
+
     return bookings.map((booking) => {
       const mate = mateMap.get(booking.mateId);
       const mateUser = mate ? userMap.get(mate.userId) : undefined;
       const renterUser = userMap.get(booking.renterId);
       const activity = activityMap.get(booking.activityId);
+      const review = reviewByBookingId.get(booking.id);
 
       return {
         id: booking.id,
@@ -391,6 +396,15 @@ export class BookingsService {
         renter: { id: booking.renterId, name: renterUser?.name ?? 'Unknown' },
         mate: { id: booking.mateId, name: mateUser?.name ?? 'Unknown' },
         activity: { id: booking.activityId, name: activity?.name ?? 'Unknown' },
+        review: review
+          ? {
+              id: review.id,
+              rating: review.rating,
+              comment: review.comment ?? null,
+              createdAt: review.createdAt,
+              updatedAt: review.updatedAt,
+            }
+          : null,
       };
     });
   }

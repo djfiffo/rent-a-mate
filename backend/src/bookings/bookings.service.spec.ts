@@ -86,6 +86,7 @@ function createFixture() {
   const bookingRows: Row[] = [];
   const notificationRows: Row[] = [];
   const paymentRows: Row[] = [];
+  const reviewRows: Row[] = [];
 
   const mateTable = createTable(mateRows, 'id', { value: 100 });
   const activityTable = createTable(activityRows, 'id', { value: 100 });
@@ -94,6 +95,7 @@ function createFixture() {
   const bookingTable = createTable(bookingRows, 'id', { value: 1 });
   const notificationTable = createTable(notificationRows, 'id', { value: 1 });
   const paymentTable = createTable(paymentRows, 'id', { value: 1 });
+  const reviewTable = createTable(reviewRows, 'id', { value: 1 });
 
   const database: BookingDatabase = {
     orm: {
@@ -104,6 +106,7 @@ function createFixture() {
         User: userTable as never,
         MateActivity: mateActivityTable as never,
         Payment: paymentTable as never,
+        Review: reviewTable as never,
         Notification: notificationTable as never,
       },
     },
@@ -124,7 +127,7 @@ function createFixture() {
     paymentsService as never,
   );
 
-  return { service, database, mateRows, userRows, bookingRows, notificationRows, mateAvailabilityService, paymentsService };
+  return { service, database, mateRows, userRows, bookingRows, notificationRows, reviewRows, mateAvailabilityService, paymentsService };
 }
 
 describe('BookingsService', () => {
@@ -373,6 +376,31 @@ describe('BookingsService', () => {
       const created = await fixture.service.create(7, dto);
       const detail = await fixture.service.findOne({ id: 7, role: 'renter' }, created.id);
       expect(detail.id).toBe(created.id);
+    });
+
+    it('surfaces review as null when the booking has no review yet', async () => {
+      const created = await fixture.service.create(7, dto);
+      const detail = await fixture.service.findOne({ id: 7, role: 'renter' }, created.id);
+      expect(detail.review).toBeNull();
+    });
+
+    it('surfaces the review state once a review row exists for the booking', async () => {
+      const created = await fixture.service.create(7, dto);
+      fixture.reviewRows.push({
+        id: 1,
+        bookingId: created.id,
+        renterId: 7,
+        mateId: 3,
+        rating: 5,
+        comment: 'Great mate!',
+        createdAt: 'now',
+        updatedAt: 'now',
+      });
+
+      const detail = await fixture.service.findOne({ id: 7, role: 'renter' }, created.id);
+      expect(detail.review).toEqual(
+        expect.objectContaining({ id: 1, rating: 5, comment: 'Great mate!' }),
+      );
     });
 
     it('rejects viewing a booking detail for a non-participant, non-admin caller', async () => {
