@@ -1,6 +1,7 @@
 import type { db } from '../prisma/db.js';
 import type { NotificationCreateInput, NotificationRecord } from '../notifications/notifications.types.js';
 import type { PaymentClient } from '../payments/payments.types.js';
+import type { ReviewClient } from '../reviews/reviews.types.js';
 
 export type BookingClient = typeof db.orm.public.Booking;
 export type BookingFilter = Parameters<BookingClient['where']>[0];
@@ -66,6 +67,15 @@ export type BookingTransaction = {
       Payment: {
         where: PaymentClient['where'];
       };
+      /**
+       * Read-only — used solely so `toBookingDetails()` can attach each
+       * booking's review state (see `BookingDetail.review`) without
+       * importing anything from the `reviews` module beyond this
+       * type-only `ReviewClient` alias.
+       */
+      Review: {
+        where: ReviewClient['where'];
+      };
       Notification: {
         create(data: NotificationCreateInput): Promise<NotificationRecord>;
       };
@@ -94,4 +104,18 @@ export interface BookingDetail {
   renter: BookingParticipantSummary;
   mate: BookingParticipantSummary;
   activity: BookingParticipantSummary;
+  /**
+   * `null` when the booking has no review yet — either it is not
+   * `completed`, or the renter simply has not reviewed it. See
+   * `ReviewsService.create` (spec 6.6) for how a review row is created.
+   */
+  review: BookingReviewSummary | null;
+}
+
+export interface BookingReviewSummary {
+  id: number;
+  rating: number;
+  comment: string | null;
+  createdAt: unknown;
+  updatedAt: unknown;
 }
