@@ -20,6 +20,6 @@ import { StripeProvider } from './providers/stripe.provider.js';
     StripeProvider,
     { provide: PAYMENTS_DATABASE_TOKEN, useValue: db },
   ],
-  exports: [PaymentsService],
+  exports: [PaymentsService, StripeProvider],
 })
 export class PaymentsModule {}

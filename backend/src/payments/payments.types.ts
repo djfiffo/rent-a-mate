@@ -17,7 +17,13 @@ type MateQuery = ReturnType<MateClient['where']>;
 export type MateRecordForPayment = NonNullable<Awaited<ReturnType<MateQuery['first']>>>;
 
 type StripeWebhookEventClient = typeof db.orm.public.StripeWebhookEvent;
-export type StripeWebhookEventCreateInput = Parameters<StripeWebhookEventClient['create']>[0];
+/**
+ * Deliberately not derived via `Parameters<StripeWebhookEventClient['create']>[0]`
+ * — for this string-`@id` model that resolves to the ORM's last (broadest)
+ * overload signature rather than the usable one, typing as `never`. Declared
+ * explicitly instead; `processedAt` has a DB default so it is omitted here.
+ */
+export type StripeWebhookEventCreateInput = { id: string; type: string };
 
 /**
  * Structural shape shared by the top-level `db` client and the callback
