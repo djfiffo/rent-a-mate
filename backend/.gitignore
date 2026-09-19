@@ -9,3 +9,5 @@ dist/
 *.tsbuildinfo
 coverage/
 *.log
+
+tsconfig.build.tsbuildinfo
