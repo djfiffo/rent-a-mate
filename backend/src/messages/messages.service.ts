@@ -4,6 +4,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { Temporal } from '@js-temporal/polyfill';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { AuthUser } from '../users/users.types.js';
 import type { PaginatedResult } from '../admin/admin.types.js';
@@ -138,6 +139,27 @@ export class MessagesService {
         createdAt: message.createdAt,
       };
     });
+  }
+
+  /**
+   * Marks every unread message sent *by the other participant* as read.
+   * Never marks the caller's own messages (there is no concept of
+   * "read by sender"). `readAt` otherwise stays `null` forever per spec
+   * 6.7 — this is the only code path that ever sets it, and today it is
+   * only reachable via the future Socket.IO `mark_read` event (no REST
+   * mark-read endpoint exists for messages).
+   */
+  async markRead(user: AuthUser, bookingId: number): Promise<{ updatedCount: number }> {
+    const { booking, mate } = await this.assertParticipant(user, bookingId);
+    const otherParticipantId = booking.renterId === user.id ? mate.userId : booking.renterId;
+
+    const updatedCount = await this.database.orm.public.Message.where({
+      bookingId,
+      senderId: otherParticipantId,
+      readAt: null,
+    }).updateAndCount({ readAt: Temporal.Now.instant() });
+
+    return { updatedCount };
   }
 
   private toEpochMillis(value: MessageRecord['createdAt']): number {

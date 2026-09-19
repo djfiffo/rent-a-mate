@@ -34,6 +34,9 @@ export type MateRecordForMessage = NonNullable<Awaited<ReturnType<MateQuery['fir
 export type MessageTransaction = {
   orm: {
     public: {
+      // `updateAndCount` (not `update`, which only affects the first matching
+      // row) is required here because markRead() marks *every* unread
+      // message from the other participant, not just one.
       Message: {
         where: MessageClient['where'];
         create: MessageClient['create'];
