@@ -28,6 +28,11 @@ function createTable(rows: Row[], idField: string | null, nextId: { value: numbe
     where: (filter: Filter) => makeQuery([...filters, filter]),
     first: async () => rows.find((row) => filters.every((filter) => matchesFilter(row, filter))) ?? null,
     all: async () => rows.filter((row) => filters.every((filter) => matchesFilter(row, filter))),
+    updateAndCount: async (data: Row) => {
+      const matched = rows.filter((row) => filters.every((filter) => matchesFilter(row, filter)));
+      matched.forEach((row) => Object.assign(row, data));
+      return matched.length;
+    },
   });
 
   return {
@@ -187,6 +192,35 @@ describe('MessagesService', () => {
         NotFoundException,
       );
       expect(fixture.messageRows).toHaveLength(0);
+    });
+  });
+
+  describe('markRead', () => {
+    beforeEach(() => {
+      fixture.messageRows.push(
+        { id: 1, bookingId: 2, senderId: RENTER_ID, content: 'from renter', readAt: null, createdAt: '2026-01-01T00:00:00.000Z' },
+        { id: 2, bookingId: 2, senderId: MATE_USER_ID, content: 'from mate 1', readAt: null, createdAt: '2026-01-02T00:00:00.000Z' },
+        { id: 3, bookingId: 2, senderId: MATE_USER_ID, content: 'from mate 2', readAt: null, createdAt: '2026-01-03T00:00:00.000Z' },
+      );
+    });
+
+    it("marks only the other participant's unread messages as read, not the caller's own", async () => {
+      const result = await fixture.service.markRead({ id: RENTER_ID }, 2);
+
+      expect(result).toEqual({ updatedCount: 2 });
+      expect(fixture.messageRows.find((m) => m['id'] === 1)?.['readAt']).toBeNull();
+      expect(fixture.messageRows.find((m) => m['id'] === 2)?.['readAt']).not.toBeNull();
+      expect(fixture.messageRows.find((m) => m['id'] === 3)?.['readAt']).not.toBeNull();
+    });
+
+    it('is a no-op (updatedCount: 0) when there is nothing unread from the other participant', async () => {
+      await fixture.service.markRead({ id: RENTER_ID }, 2);
+      const result = await fixture.service.markRead({ id: RENTER_ID }, 2);
+      expect(result).toEqual({ updatedCount: 0 });
+    });
+
+    it('throws NotFoundException for a non-participant', async () => {
+      await expect(fixture.service.markRead({ id: OTHER_RENTER_ID }, 2)).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });
