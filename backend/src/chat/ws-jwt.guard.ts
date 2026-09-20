@@ -72,15 +72,9 @@ export class WsJwtGuard {
   }
 
   private extractToken(client: Socket): string | undefined {
-    const fromAuth = client.handshake.auth?.['token'];
-    if (typeof fromAuth === 'string' && fromAuth.length > 0) {
-      return fromAuth;
-    }
-    // Fallback for clients that can't set handshake.auth (e.g. some older
-    // Socket.IO client versions or plain WS testing tools).
-    const fromQuery = client.handshake.query?.['token'];
-    if (typeof fromQuery === 'string' && fromQuery.length > 0) {
-      return fromQuery;
+    const token = client.handshake.auth?.['token'];
+    if (typeof token === 'string' && token.length > 0) {
+      return token;
     }
     return undefined;
   }
