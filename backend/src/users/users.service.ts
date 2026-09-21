@@ -54,7 +54,13 @@ export class UsersService {
     const updated = await this.database.orm.public.User.where({ id: userId }).update({ password });
     const refreshTokens = this.database.orm.public.RefreshToken;
     if (refreshTokens) {
-      await refreshTokens.where({ userId, revokedAt: null }).update({ revokedAt: Temporal.Now.instant() });
+      const now = Temporal.Now.instant();
+      const activeTokens = await refreshTokens.where({ userId, revokedAt: null }).all();
+      await Promise.all(
+        activeTokens.map((token) =>
+          refreshTokens.where({ id: token.id, revokedAt: null }).update({ revokedAt: now }),
+        ),
+      );
     }
     return this.toSafeUser(updated);
   }
