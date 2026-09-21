@@ -27,6 +27,8 @@ type MateActivityClient = typeof db.orm.public.MateActivity;
 type MateActivityQuery = ReturnType<MateActivityClient['where']>;
 export type MateActivityRecordForBooking = NonNullable<Awaited<ReturnType<MateActivityQuery['first']>>>;
 
+type PrismaTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /**
  * Structural shape shared by the top-level `db` client and the callback
  * argument of `db.transaction(...)`. Declaring it this way (instead of
@@ -38,6 +40,7 @@ export type MateActivityRecordForBooking = NonNullable<Awaited<ReturnType<MateAc
  * atomic with the booking mutation that triggered them.
  */
 export type BookingTransaction = {
+  query: PrismaTransaction['query'];
   orm: {
     public: {
       Booking: {

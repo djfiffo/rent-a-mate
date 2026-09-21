@@ -19,6 +19,7 @@ export type UserDatabase = {
       };
       RefreshToken?: {
         where(filters: Record<string, unknown>): {
+          all(): Promise<{ id: string }[]>;
           update(data: Record<string, unknown>): Promise<unknown>;
         };
       };

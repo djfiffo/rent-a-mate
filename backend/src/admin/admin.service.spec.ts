@@ -39,11 +39,32 @@ vi.mock('../prisma/db.js', async () => {
   ];
 
   const mockPayments: Array<Record<string, unknown>> = [];
+  const mockReports = [
+    {
+      id: 201,
+      reporterId: 2,
+      targetType: 'mate',
+      targetId: 10,
+      reason: 'Misconduct',
+      status: 'open',
+      resolutionNote: null,
+      resolvedById: null,
+      resolvedAt: null,
+      createdAt: yesterday,
+    },
+  ];
 
   const createQueryMock = (items: Array<any>) => {
     const q: any = {
       all: vi.fn(() => Promise.resolve([...items])),
       first: vi.fn(() => Promise.resolve(items[0] ?? null)),
+      count: vi.fn(() => {
+        throw new Error('Collection count() is not a valid aggregate terminal');
+      }),
+      aggregate: vi.fn(async (select: (aggregate: { count: () => undefined; sum: () => undefined }) => Record<string, unknown>) => {
+        const selected = select({ count: () => undefined, sum: () => undefined });
+        return Object.fromEntries(Object.keys(selected).map((key) => [key, items.length]));
+      }),
       where: vi.fn((filter: any) => {
         let filtered = items;
         if (typeof filter === 'function') {
@@ -125,8 +146,13 @@ vi.mock('../prisma/db.js', async () => {
             all: vi.fn(() => Promise.resolve([...mockActivities])),
             where: vi.fn((filter: any) => createQueryMock(mockActivities).where(filter)),
           },
+          Report: {
+            all: vi.fn(() => Promise.resolve([...mockReports])),
+            where: vi.fn((filter: any) => createQueryMock(mockReports).where(filter)),
+          },
           RefreshToken: {
             where: vi.fn(() => ({
+              all: vi.fn(() => Promise.resolve([])),
               update: vi.fn(() => Promise.resolve(null)),
             })),
           },
@@ -249,6 +275,17 @@ describe('AdminService', () => {
       // Verify mate.name correctly maps mate.userId to 'Jane Mate' even though mate.id is 10
       expect(booking.mate.name).toBe('Jane Mate');
       expect(booking.activity.name).toBe('Dining');
+    });
+  });
+
+  describe('listReports', () => {
+    it('returns filtered reports with a valid aggregate total', async () => {
+      const result = await service.listReports({ status: 'open' });
+
+      expect(result.meta.total).toBe(1);
+      expect(result.items).toEqual([
+        expect.objectContaining({ id: 201, reporter: { id: 2, name: 'John Renter' } }),
+      ]);
     });
   });
 

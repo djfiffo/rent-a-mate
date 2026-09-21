@@ -31,7 +31,7 @@ function createFixture() {
     update,
   }));
   const revokeRefreshTokens = vi.fn().mockResolvedValue(1);
-  const refreshTokenWhere = vi.fn(() => ({ update: revokeRefreshTokens }));
+  const refreshTokenWhere = vi.fn(() => ({ all: vi.fn().mockResolvedValue([{ id: 'token-a' }, { id: 'token-b' }]), update: revokeRefreshTokens }));
   const database: UserDatabase = {
     orm: { public: { User: { where }, RefreshToken: { where: refreshTokenWhere } } },
   };
@@ -98,6 +98,9 @@ describe('UsersService', () => {
     });
 
     expect(fixture.refreshTokenWhere).toHaveBeenCalledWith({ userId: 7, revokedAt: null });
+    expect(fixture.refreshTokenWhere).toHaveBeenCalledWith({ id: 'token-a', revokedAt: null });
+    expect(fixture.refreshTokenWhere).toHaveBeenCalledWith({ id: 'token-b', revokedAt: null });
+    expect(fixture.revokeRefreshTokens).toHaveBeenCalledTimes(2);
     expect(fixture.revokeRefreshTokens).toHaveBeenCalledWith({ revokedAt: expect.anything() });
   });
 });

@@ -9,15 +9,23 @@ type AccessTokenPayload = {
   type: 'access' | 'refresh';
 };
 
+function getAccessTokenSecret(): string {
+  const secret = process.env['JWT_ACCESS_SECRET'];
+
+  if (!secret?.trim()) {
+    throw new Error('JWT_ACCESS_SECRET is not configured');
+  }
+
+  return secret;
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey:
-        process.env['JWT_ACCESS_SECRET'] ??
-        'development-access-secret-change-me',
+      secretOrKey: getAccessTokenSecret(),
     });
   }
 

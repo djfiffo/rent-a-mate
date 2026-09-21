@@ -79,9 +79,7 @@ export class AdminService {
     await this.requireUser(userId);
     const now = Temporal.Now.instant();
 
-    await db.orm.public.RefreshToken
-      .where({ userId, revokedAt: null })
-      .update({ revokedAt: now });
+    await this.revokeAllActiveRefreshTokens(userId, now);
 
     const updated = await (db.orm.public.User as any).where({ id: userId }).update({
       isBanned: true,
@@ -297,7 +295,7 @@ export class AdminService {
       this.aggregateBookingCounts(bookingRange),
       this.aggregateRevenue(paymentRange),
       this.aggregateCount(userRange),
-      this.aggregateDaily(fromInstant, toInstant, fromDate, toDate, {
+      this.aggregateDaily(fromDate, toDate, {
         bookings: bookingRange,
         payments: paymentRange,
         users: userRange,
@@ -356,62 +354,10 @@ export class AdminService {
   }
 
   private async aggregateDaily(
-    fromInstant: Temporal.Instant,
-    toInstant: Temporal.Instant,
     fromDate: Temporal.PlainDate,
     toDate: Temporal.PlainDate,
     boundedQueries?: { bookings: any; payments: any; users: any },
   ): Promise<{ bookings: { date: string; value: number }[]; revenue: { date: string; value: number }[]; users: { date: string; value: number }[] }> {
-    const raw = (db as any).raw;
-    if (raw?.sql && typeof (db as any).runtime === 'function') {
-      const resultSpec = {
-        date: { codecId: 'pg/text@1' },
-        value: { codecId: 'pg/int8number@1' },
-      };
-      const revenueSpec = {
-        date: { codecId: 'pg/text@1' },
-        value: { codecId: 'pg/numeric@1' },
-      };
-      const bookingsPlan = raw.sql`
-        SELECT to_char(("booking"."createdAt" AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') AS "date",
-               COUNT(*)::bigint AS "value"
-        FROM "booking"
-        WHERE "booking"."createdAt" >= ${fromInstant}
-          AND "booking"."createdAt" < ${toInstant}
-        GROUP BY 1 ORDER BY 1
-      `.returnsRow(resultSpec).build();
-      const revenuePlan = raw.sql`
-        SELECT to_char(("payment"."paidAt" AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') AS "date",
-               COALESCE(SUM("payment"."amount"), 0)::numeric AS "value"
-        FROM "payment"
-        WHERE "payment"."paidAt" >= ${fromInstant}
-          AND "payment"."paidAt" < ${toInstant}
-          AND "payment"."status" = 'paid'
-        GROUP BY 1 ORDER BY 1
-      `.returnsRow(revenueSpec).build();
-      const usersPlan = raw.sql`
-        SELECT to_char(("user"."createdAt" AT TIME ZONE ${TIMEZONE})::date, 'YYYY-MM-DD') AS "date",
-               COUNT(*)::bigint AS "value"
-        FROM "user"
-        WHERE "user"."createdAt" >= ${fromInstant}
-          AND "user"."createdAt" < ${toInstant}
-          AND "user"."isActive" = true
-        GROUP BY 1 ORDER BY 1
-      `.returnsRow(resultSpec).build();
-      const rows = async (plan: unknown) =>
-        (await (db as any).runtime().execute(plan)) as { date: string; value: number | string }[];
-      const [bookings, revenue, users] = await Promise.all([
-        rows(bookingsPlan),
-        rows(revenuePlan),
-        rows(usersPlan),
-      ]);
-      return {
-        bookings: bookings.map((row) => ({ date: String(row.date), value: Number(row.value) })),
-        revenue: revenue.map((row) => ({ date: String(row.date), value: Number(row.value) })),
-        users: users.map((row) => ({ date: String(row.date), value: Number(row.value) })),
-      };
-    }
-
     const daily = (date: unknown) => {
       if (date instanceof Temporal.Instant) return date.toZonedDateTimeISO(TIMEZONE).toPlainDate().toString();
       return String(date).slice(0, 10);
@@ -537,8 +483,21 @@ export class AdminService {
   }
 
   private async count(query: any): Promise<number> {
-    if (typeof query.count === 'function') return Number(await query.count());
+    if (typeof query.aggregate === 'function') {
+      const result = await query.aggregate((aggregate: any) => ({ total: aggregate.count() }));
+      return Number(result.total);
+    }
     return (await query.all()).length;
+  }
+
+  private async revokeAllActiveRefreshTokens(userId: number, revokedAt: Temporal.Instant): Promise<void> {
+    const refreshTokens = db.orm.public.RefreshToken;
+    const activeTokens = await refreshTokens.where({ userId, revokedAt: null }).all();
+    await Promise.all(
+      activeTokens.map((token) =>
+        refreshTokens.where({ id: token.id, revokedAt: null }).update({ revokedAt }),
+      ),
+    );
   }
 
   private async pageQuery(query: any, limit: number, offset: number, order: (q: any) => any): Promise<any[]> {
