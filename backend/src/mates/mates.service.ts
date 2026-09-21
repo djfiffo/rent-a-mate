@@ -241,9 +241,10 @@ export class MatesService {
       Promise.all(interestLinks.map((link) => this.database.orm.public.Interest.where({ id: link.interestId }).first())),
     ]);
 
+    const safeUser = this.requireRecordSync(user, 'User not found');
     return {
       id: mate.id,
-      user: this.requireRecordSync(user, 'User not found'),
+      user: { id: safeUser.id, name: safeUser.name },
       age: mate.age,
       bio: mate.bio,
       hourlyRate: mate.hourlyRate,
