@@ -2,7 +2,7 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { Client } from 'minio';
 import { MINIO_CONNECTION } from 'nestjs-minio';
-import type { MateStorageProvider, MateUpload } from '../mates/mate-storage.js';
+import type { MateStorageProvider, MateUpload } from '../mates/gallery/mate-storage.js';
 import type { MinioStorageConfig } from './minio.config.js';
 
 export const MINIO_STORAGE_CONFIG = Symbol('MINIO_STORAGE_CONFIG');

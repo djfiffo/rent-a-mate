@@ -1,15 +1,13 @@
 import { Module } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { AuthModule } from '../auth/auth.module.js';
+import { AuthorizationModule } from '../shared/authorization/authorization.module.js';
 import { AdminController } from './admin.controller.js';
 import { AdminService } from './admin.service.js';
 import { ReportsController } from './reports.controller.js';
-import { RolesGuard } from './roles.guard.js';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, AuthorizationModule],
   controllers: [AdminController, ReportsController],
-  providers: [AdminService, RolesGuard, Reflector],
-  exports: [RolesGuard],
+  providers: [AdminService],
 })
 export class AdminModule {}

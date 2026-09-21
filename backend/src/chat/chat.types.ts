@@ -1,4 +1,5 @@
 import type { CreateMessageResult } from '../messages/messages.types.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
 
 /**
  * Socket.IO has no HTTP status codes, so every client->server event replies
@@ -24,7 +25,7 @@ export function bookingRoom(bookingId: number): string {
 
 /** Data attached to `client.data` by `WsJwtGuard` during `handleConnection`. */
 export interface ChatSocketData {
-  user: { id: number; role?: 'renter' | 'mate' | 'admin' };
+  user: AuthUser;
 }
 
 export interface JoinBookingPayload {

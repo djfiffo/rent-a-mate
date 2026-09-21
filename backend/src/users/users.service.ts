@@ -6,9 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
-import { DATABASE_TOKEN, PASSWORD_SERVICE } from './users.tokens.js';
+import { PASSWORD_SERVICE } from '../shared/security/password/password.tokens.js';
+import type { PasswordService } from '../shared/security/password/password.types.js';
+import { DATABASE_TOKEN } from './users.tokens.js';
 import type { ChangeEmailDto, ChangePasswordDto, UpdateProfileDto } from './dto/index.js';
-import type { PasswordService, SafeUser, UserDatabase, UserRecord } from './users.types.js';
+import type { SafeUser, UserDatabase, UserRecord } from './users.types.js';
 
 @Injectable()
 export class UsersService {

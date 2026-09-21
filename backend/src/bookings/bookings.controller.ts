@@ -11,21 +11,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
-import type { AuthUser } from '../users/users.types.js';
-import type { PaginatedResult } from '../admin/admin.types.js';
-import { Roles } from '../admin/roles.decorator.js';
-import { RolesGuard } from '../admin/roles.guard.js';
+import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
+import type { PaginatedResult } from '../shared/types/pagination.js';
+import { Roles } from '../shared/authorization/roles.decorator.js';
+import { RolesGuard } from '../shared/authorization/roles.guard.js';
 import { BookingsService, type CreateBookingResult } from './bookings.service.js';
 import type { BookingDetail, BookingRecord } from './bookings.types.js';
 import { CreateBookingDto } from './dto/create-booking.dto.js';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto.js';
-
-interface ApiResponse<T> {
-  status: 'success';
-  message: string;
-  data: T;
-}
 
 @Controller('bookings')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -40,7 +35,7 @@ export class BookingsController {
   ): Promise<ApiResponse<CreateBookingResult>> {
     const renterId = this.requireUserId(user);
     const booking = await this.bookingsService.create(renterId, dto);
-    return this.success('Booking request sent', booking);
+    return successResponse('Booking request sent', booking);
   }
 
   @Get()
@@ -50,7 +45,7 @@ export class BookingsController {
   ): Promise<ApiResponse<PaginatedResult<BookingDetail>>> {
     const authUser = this.requireUser(user);
     const result = await this.bookingsService.findMine(authUser, query);
-    return this.success('OK', result);
+    return successResponse('OK', result);
   }
 
   @Get(':bookingId')
@@ -60,7 +55,7 @@ export class BookingsController {
   ): Promise<ApiResponse<BookingDetail>> {
     const authUser = this.requireUser(user);
     const result = await this.bookingsService.findOne(authUser, bookingId);
-    return this.success('OK', result);
+    return successResponse('OK', result);
   }
 
   @Patch(':bookingId/accept')
@@ -71,7 +66,7 @@ export class BookingsController {
   ): Promise<ApiResponse<BookingRecord>> {
     const authUser = this.requireUser(user);
     const result = await this.bookingsService.accept(authUser, bookingId);
-    return this.success('Booking confirmed', result);
+    return successResponse('Booking confirmed', result);
   }
 
   @Patch(':bookingId/decline')
@@ -82,7 +77,7 @@ export class BookingsController {
   ): Promise<ApiResponse<BookingRecord>> {
     const authUser = this.requireUser(user);
     const result = await this.bookingsService.decline(authUser, bookingId);
-    return this.success('Booking declined', result);
+    return successResponse('Booking declined', result);
   }
 
   @Patch(':bookingId/cancel')
@@ -92,7 +87,7 @@ export class BookingsController {
   ): Promise<ApiResponse<BookingRecord>> {
     const authUser = this.requireUser(user);
     const result = await this.bookingsService.cancel(authUser, bookingId);
-    return this.success('Booking cancelled', result);
+    return successResponse('Booking cancelled', result);
   }
 
   @Patch(':bookingId/complete')
@@ -102,7 +97,7 @@ export class BookingsController {
   ): Promise<ApiResponse<BookingRecord>> {
     const authUser = this.requireUser(user);
     const result = await this.bookingsService.complete(authUser, bookingId);
-    return this.success('Booking completed', result);
+    return successResponse('Booking completed', result);
   }
 
   private requireUser(user: AuthUser | undefined): AuthUser {
@@ -116,7 +111,4 @@ export class BookingsController {
     return this.requireUser(user).id;
   }
 
-  private success<T>(message: string, data: T): ApiResponse<T> {
-    return { status: 'success', message, data };
-  }
 }

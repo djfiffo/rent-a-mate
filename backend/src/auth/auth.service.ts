@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Temporal } from '@js-temporal/polyfill';
 import { createHash, randomUUID } from 'node:crypto';
 import { db } from '../prisma/db.js';
-import { PasswordHashService } from '../users/password.service.js';
+import { PasswordHashService } from '../shared/security/password/password-hash.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 

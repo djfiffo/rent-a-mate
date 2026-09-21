@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
 import { db } from '../prisma/db.js';
+import type { PaginatedResult } from '../shared/types/pagination.js';
 import type {
   AdminBookingItem,
   AdminReport,
@@ -14,7 +15,6 @@ import type {
   AnalyticsResult,
   BookingCountsByStatus,
   DailyAnalytics,
-  PaginatedResult,
   ReportStatus,
   ReportTargetType,
 } from './admin.types.js';

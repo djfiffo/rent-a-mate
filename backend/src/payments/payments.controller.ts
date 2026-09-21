@@ -9,30 +9,21 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
-import type { AuthUser } from '../users/users.types.js';
-import type { PaginatedResult } from '../admin/admin.types.js';
-import { Roles } from '../admin/roles.decorator.js';
-import { RolesGuard } from '../admin/roles.guard.js';
+import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
+import type { PaginatedResult } from '../shared/types/pagination.js';
+import { Roles } from '../shared/authorization/roles.decorator.js';
+import { RolesGuard } from '../shared/authorization/roles.guard.js';
 import { ListPaymentsQueryDto } from './dto/list-payments-query.dto.js';
 import { PaymentsService } from './payments.service.js';
 import type { CreatePaymentResult, PaymentDetail } from './payments.types.js';
-
-interface ApiResponse<T> {
-  status: 'success';
-  message: string;
-  data: T;
-}
 
 function requireUser(user: AuthUser | undefined): AuthUser {
   if (!user?.id) {
     throw new UnauthorizedException('Authentication is required');
   }
   return user;
-}
-
-function success<T>(message: string, data: T): ApiResponse<T> {
-  return { status: 'success', message, data };
 }
 
 /**
@@ -53,7 +44,7 @@ export class BookingPaymentsController {
   ): Promise<ApiResponse<CreatePaymentResult>> {
     const authUser = requireUser(user);
     const result = await this.paymentsService.pay(authUser, bookingId);
-    return success('Payment intent created', result);
+    return successResponse('Payment intent created', result);
   }
 
   @Get()
@@ -63,14 +54,14 @@ export class BookingPaymentsController {
   ): Promise<ApiResponse<PaymentDetail>> {
     const authUser = requireUser(user);
     const result = await this.paymentsService.getStatus(authUser, bookingId);
-    return success('OK', result);
+    return successResponse('OK', result);
   }
 
   @Post('refund')
   @Roles('admin')
   async refund(@Param('bookingId', ParseIntPipe) bookingId: number): Promise<ApiResponse<PaymentDetail>> {
     const result = await this.paymentsService.refundAsAdmin(bookingId);
-    return success('Refund initiated', result);
+    return successResponse('Refund initiated', result);
   }
 }
 
@@ -86,6 +77,6 @@ export class PaymentsController {
   ): Promise<ApiResponse<PaginatedResult<PaymentDetail>>> {
     const authUser = requireUser(user);
     const result = await this.paymentsService.listMine(authUser, query);
-    return success('OK', result);
+    return successResponse('OK', result);
   }
 }

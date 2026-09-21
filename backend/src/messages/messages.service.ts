@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
 import { NotificationsService } from '../notifications/notifications.service.js';
-import type { AuthUser } from '../users/users.types.js';
-import type { PaginatedResult } from '../admin/admin.types.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
+import type { PaginatedResult } from '../shared/types/pagination.js';
 import { MESSAGES_DATABASE_TOKEN } from './messages.tokens.js';
 import type {
   CreateMessageResult,

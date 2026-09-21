@@ -6,17 +6,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
-import type { AuthUser } from '../users/users.types.js';
+import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
 import { AdminService } from './admin.service.js';
 import type { AdminReport } from './admin.types.js';
 import { CreateReportDto } from './dto/create-report.dto.js';
-
-interface ApiResponse<T> {
-  status: 'success';
-  message: string;
-  data: T;
-}
 
 @Controller('reports')
 @UseGuards(JwtAuthGuard)
@@ -32,6 +27,6 @@ export class ReportsController {
       throw new UnauthorizedException('Authenticated user is required');
     }
     const report = await this.adminService.createReport(user.id, dto);
-    return { status: 'success', message: 'Report created', data: { report } };
+    return successResponse('Report created', { report });
   }
 }

@@ -1,29 +1,20 @@
 import { Body, Controller, Delete, Param, ParseIntPipe, Patch, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
-import type { AuthUser } from '../users/users.types.js';
-import { Roles } from '../admin/roles.decorator.js';
-import { RolesGuard } from '../admin/roles.guard.js';
+import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
+import { Roles } from '../shared/authorization/roles.decorator.js';
+import { RolesGuard } from '../shared/authorization/roles.guard.js';
 import { CreateReviewDto } from './dto/create-review.dto.js';
 import { UpdateReviewDto } from './dto/update-review.dto.js';
 import { ReviewsService } from './reviews.service.js';
 import type { ReviewDetail } from './reviews.types.js';
-
-interface ApiResponse<T> {
-  status: 'success';
-  message: string;
-  data: T;
-}
 
 function requireUser(user: AuthUser | undefined): AuthUser {
   if (!user?.id) {
     throw new UnauthorizedException('Authentication is required');
   }
   return user;
-}
-
-function success<T>(message: string, data: T): ApiResponse<T> {
-  return { status: 'success', message, data };
 }
 
 /**
@@ -46,7 +37,7 @@ export class BookingReviewController {
   ): Promise<ApiResponse<ReviewDetail>> {
     const authUser = requireUser(user);
     const result = await this.reviewsService.create(authUser, bookingId, dto);
-    return success('Review created', result);
+    return successResponse('Review created', result);
   }
 }
 
@@ -63,7 +54,7 @@ export class ReviewsController {
   ): Promise<ApiResponse<ReviewDetail>> {
     const authUser = requireUser(user);
     const result = await this.reviewsService.update(authUser, reviewId, dto);
-    return success('Review updated', result);
+    return successResponse('Review updated', result);
   }
 
   @Delete(':reviewId')
@@ -73,6 +64,6 @@ export class ReviewsController {
   ): Promise<ApiResponse<null>> {
     const authUser = requireUser(user);
     await this.reviewsService.remove(authUser, reviewId);
-    return success('Review removed', null);
+    return successResponse('Review removed', null);
   }
 }

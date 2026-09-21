@@ -10,19 +10,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
-import type { AuthUser } from '../users/users.types.js';
-import type { PaginatedResult } from '../admin/admin.types.js';
+import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
+import type { PaginatedResult } from '../shared/types/pagination.js';
 import { CreateMessageDto } from './dto/create-message.dto.js';
 import { ListMessagesQueryDto } from './dto/list-messages-query.dto.js';
 import { MessagesService } from './messages.service.js';
 import type { CreateMessageResult, MessageRecord } from './messages.types.js';
-
-interface ApiResponse<T> {
-  status: 'success';
-  message: string;
-  data: T;
-}
 
 /**
  * REST surface for booking chat, per spec 6.7. Nested under `/bookings`
@@ -43,7 +38,7 @@ export class MessagesController {
   ): Promise<ApiResponse<PaginatedResult<MessageRecord>>> {
     const authUser = this.requireUser(user);
     const result = await this.messagesService.list(authUser, bookingId, query);
-    return this.success('OK', result);
+    return successResponse('OK', result);
   }
 
   @Post()
@@ -54,7 +49,7 @@ export class MessagesController {
   ): Promise<ApiResponse<CreateMessageResult>> {
     const authUser = this.requireUser(user);
     const result = await this.messagesService.create(authUser, bookingId, dto);
-    return this.success('Message sent', result);
+    return successResponse('Message sent', result);
   }
 
   private requireUser(user: AuthUser | undefined): AuthUser {
@@ -64,7 +59,4 @@ export class MessagesController {
     return user;
   }
 
-  private success<T>(message: string, data: T): ApiResponse<T> {
-    return { status: 'success', message, data };
-  }
 }
