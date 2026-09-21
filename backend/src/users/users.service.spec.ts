@@ -4,12 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChangeEmailDto, ChangePasswordDto, UpdateProfileDto } from './dto/index.js';
 import { UsersService } from './users.service.js';
 import type {
-  PasswordService,
   UserDatabase,
   UserFilter,
   UserRecord,
   UserUpdate,
 } from './users.types.js';
+import type { PasswordService } from '../shared/security/password/password.types.js';
 
 const user: UserRecord = {
   id: 7,

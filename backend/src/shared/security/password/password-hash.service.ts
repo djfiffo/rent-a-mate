@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import bcrypt from 'bcrypt';
 import { promisify } from 'node:util';
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
-import type { PasswordService } from './users.types.js';
+import type { PasswordService } from './password.types.js';
 
 const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_SALT_LENGTH = 16;
