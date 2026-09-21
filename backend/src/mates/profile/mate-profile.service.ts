@@ -4,39 +4,23 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-  Optional,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
 import { CreateMateProfileDto } from './dto/create-mate-profile.dto.js';
 import { UpdateMateProfileDto } from './dto/update-mate-profile.dto.js';
-import { CreateMatePhotoDto, UploadMatePhotoDto } from '../gallery/dto/create-mate-photo.dto.js';
 import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
-import {
-  LocalMateStorageProvider,
-  MATE_STORAGE_TOKEN,
-  type MateUpload,
-  type MateStorageProvider,
-} from '../gallery/mate-storage.js';
 import type {
   MateDatabase,
   MateLookup,
-  MatePhotoRecord,
   MateProfile,
   MateRecord,
   MateUpdate,
 } from '../internal/mates.types.js';
 
-const MAX_GALLERY_SIZE = 6;
-
 @Injectable()
-export class MatesService {
-  constructor(
-    @Inject(MATES_DATABASE_TOKEN) private readonly database: MateDatabase,
-    @Optional()
-    @Inject(MATE_STORAGE_TOKEN)
-    private readonly storage: MateStorageProvider = new LocalMateStorageProvider(),
-  ) {}
+export class MateProfileService {
+  constructor(@Inject(MATES_DATABASE_TOKEN) private readonly database: MateDatabase) {}
 
   async create(userId: number, input: CreateMateProfileDto): Promise<MateProfile> {
     const created = await this.database.transaction(async (transaction) => {
@@ -135,92 +119,6 @@ export class MatesService {
     });
 
     return this.getProfileByMate(updated);
-  }
-
-  async addPhoto(userId: number, input: UploadMatePhotoDto | CreateMatePhotoDto, file?: MateUpload): Promise<MatePhotoRecord> {
-    const mate = await this.requireMate(userId);
-    this.ensureActive(mate);
-
-    const photoModel = this.photoModel(this.database);
-    if (!photoModel) {
-      throw new UnprocessableEntityException('Mate gallery storage is not configured');
-    }
-
-    const existing = await photoModel.where({ mateId: mate.id }).all();
-    if (existing.length >= MAX_GALLERY_SIZE) {
-      throw new ConflictException('Mate gallery cannot contain more than 6 photos');
-    }
-
-    const occupied = new Set(existing.map((photo) => photo.sortOrder));
-    let sortOrder = 0;
-    while (occupied.has(sortOrder)) sortOrder += 1;
-
-    const uploaded = file ? await this.storeUpload(mate.id, file) : undefined;
-    const url = uploaded?.url ?? input.url?.trim();
-    if (!url) throw new BadRequestException('A photo file or URL is required');
-
-    try {
-      return await photoModel.create({
-        mateId: mate.id,
-        url,
-        storageKey: uploaded?.storageKey ?? null,
-        sortOrder,
-      });
-    } catch (error) {
-      if (uploaded) {
-        try {
-          await this.storage.remove(uploaded.storageKey);
-        } catch {
-          // Keep the original database error. A future storage reconciler can
-          // clean up an object if the provider is temporarily unavailable.
-        }
-      }
-      if (isUniqueConstraintError(error)) {
-        throw new ConflictException('Mate gallery slot is no longer available');
-      }
-      throw error;
-    }
-  }
-
-  private async storeUpload(mateId: number, file: MateUpload): Promise<{ url: string; storageKey: string }> {
-    if (!file || !file.buffer || !this.isSupportedImage(file)) {
-      throw new BadRequestException('Only image files are allowed');
-    }
-    if (file.buffer.length > 5 * 1024 * 1024) {
-      throw new BadRequestException('Photo exceeds the 5 MB limit');
-    }
-    return this.storage.store(mateId, file);
-  }
-
-  private isSupportedImage(file: MateUpload): boolean {
-    const header = file.buffer.subarray(0, 12);
-    if (file.mimetype === 'image/jpeg') return header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
-    if (file.mimetype === 'image/png') return header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-    if (file.mimetype === 'image/gif') return header.subarray(0, 6).toString('ascii') === 'GIF87a' || header.subarray(0, 6).toString('ascii') === 'GIF89a';
-    if (file.mimetype === 'image/webp') return header.subarray(0, 4).toString('ascii') === 'RIFF' && header.subarray(8, 12).toString('ascii') === 'WEBP';
-    return false;
-  }
-
-  async removePhoto(userId: number, photoId: number): Promise<void> {
-    const mate = await this.requireMate(userId);
-    const photoModel = this.photoModel(this.database);
-    if (!photoModel) {
-      throw new UnprocessableEntityException('Mate gallery storage is not configured');
-    }
-
-    const photo = await photoModel.where({ id: photoId, mateId: mate.id }).first();
-    if (!photo) throw new NotFoundException('Mate photo not found');
-
-    // Provider deletion precedes record deletion. If a provider fails, the
-    // metadata remains available for a retry and no gallery record is lost.
-    if (photo.storageKey && this.isOwnedStorageKey(photo.storageKey, mate.id)) {
-      await this.storage.remove(photo.storageKey);
-    }
-    await photoModel.where({ id: photo.id, mateId: mate.id }).delete();
-  }
-
-  private isOwnedStorageKey(storageKey: string, mateId: number): boolean {
-    return storageKey.startsWith(`mates/${mateId}/`) || storageKey.startsWith(`local/mates/${mateId}/`);
   }
 
   private async getProfileByMate(mate: MateRecord): Promise<MateProfile> {
@@ -332,8 +230,4 @@ export class MatesService {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
   }
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 }

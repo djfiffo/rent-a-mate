@@ -1,6 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { MatesController } from './mate-profile.controller.js';
+import { MateProfileController } from './mate-profile.controller.js';
 
 const profile = {
   id: 42,
@@ -16,14 +16,14 @@ const profile = {
   updatedAt: '2026-09-10T00:00:00.000Z',
 };
 
-describe('MatesController', () => {
+describe('MateProfileController', () => {
   it('wraps create, retrieve, and update in the success envelope', async () => {
     const service = {
       create: vi.fn().mockResolvedValue(profile),
       getProfile: vi.fn().mockResolvedValue(profile),
       update: vi.fn().mockResolvedValue(profile),
     };
-    const controller = new MatesController(service as never);
+    const controller = new MateProfileController(service as never);
     const user = { id: 7, role: 'mate' as const };
 
     await expect(controller.create(user, {} as never)).resolves.toEqual({
@@ -37,7 +37,7 @@ describe('MatesController', () => {
 
   it('rejects missing and non-mate identities before calling the service', async () => {
     const service = { getProfile: vi.fn() };
-    const controller = new MatesController(service as never);
+    const controller = new MateProfileController(service as never);
 
     await expect(controller.getProfile(undefined)).rejects.toBeInstanceOf(ForbiddenException);
     await expect(controller.getProfile({ id: 7, role: 'renter' })).rejects.toBeInstanceOf(ForbiddenException);
