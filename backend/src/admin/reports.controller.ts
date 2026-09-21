@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import { AdminService } from './admin.service.js';
 import type { AdminReport } from './admin.types.js';

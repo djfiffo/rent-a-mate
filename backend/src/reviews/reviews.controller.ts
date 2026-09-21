@@ -1,10 +1,10 @@
 import { Body, Controller, Delete, Param, ParseIntPipe, Patch, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
-import { Roles } from '../admin/roles.decorator.js';
-import { RolesGuard } from '../admin/roles.guard.js';
+import { Roles } from '../shared/authorization/roles.decorator.js';
+import { RolesGuard } from '../shared/authorization/roles.guard.js';
 import { CreateReviewDto } from './dto/create-review.dto.js';
 import { UpdateReviewDto } from './dto/update-review.dto.js';
 import { ReviewsService } from './reviews.service.js';

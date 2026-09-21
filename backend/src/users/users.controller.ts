@@ -10,7 +10,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import type { SafeUser } from './users.types.js';
-import { CurrentUser } from './decorators/current-user.decorator.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
 import { ChangeEmailDto, ChangePasswordDto, UpdateProfileDto } from './dto/index.js';
 import { UsersService } from './users.service.js';
 

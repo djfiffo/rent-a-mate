@@ -10,11 +10,11 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import type { PaginatedResult } from '../shared/types/pagination.js';
-import { Roles } from '../admin/roles.decorator.js';
-import { RolesGuard } from '../admin/roles.guard.js';
+import { Roles } from '../shared/authorization/roles.decorator.js';
+import { RolesGuard } from '../shared/authorization/roles.guard.js';
 import { ListPaymentsQueryDto } from './dto/list-payments-query.dto.js';
 import { PaymentsService } from './payments.service.js';
 import type { CreatePaymentResult, PaymentDetail } from './payments.types.js';

@@ -4,7 +4,7 @@ import { Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { AdminController } from './admin.controller.js';
 import { AdminService } from './admin.service.js';
-import { RolesGuard } from './roles.guard.js';
+import { RolesGuard } from '../shared/authorization/roles.guard.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 
 describe('AdminController', () => {

@@ -11,7 +11,9 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
+import { Roles } from '../shared/authorization/roles.decorator.js';
+import { RolesGuard } from '../shared/authorization/roles.guard.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import type { PaginatedResult } from '../shared/types/pagination.js';
 import { AdminService } from './admin.service.js';
@@ -27,8 +29,6 @@ import { ListBookingsQueryDto } from './dto/list-bookings-query.dto.js';
 import { ListUsersQueryDto } from './dto/list-users-query.dto.js';
 import { ListReportsQueryDto } from './dto/list-reports-query.dto.js';
 import { ResolveReportDto } from './dto/resolve-report.dto.js';
-import { Roles } from './roles.decorator.js';
-import { RolesGuard } from './roles.guard.js';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)

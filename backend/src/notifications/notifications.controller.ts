@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import { ListNotificationsQueryDto } from './dto/list-notifications-query.dto.js';
 import { NotificationsService } from './notifications.service.js';

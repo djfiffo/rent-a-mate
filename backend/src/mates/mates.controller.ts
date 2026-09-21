@@ -18,7 +18,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
-import { CurrentUser } from '../users/decorators/current-user.decorator.js';
+import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import { CreateMateProfileDto } from './dto/create-mate-profile.dto.js';
 import { UpdateMateProfileDto  } from './dto/update-mate-profile.dto.js';
