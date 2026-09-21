@@ -21,6 +21,9 @@ export interface TestData {
   mate2: MateRecord;
   activity1: ActivityRecordForBooking;
   activity2: ActivityRecordForBooking;
+  interest1: { id: number; name: string };
+  province: { id: number; name: string };
+  district: { id: number; provinceId: number; name: string };
 }
 
 const TIMEZONE = 'Asia/Bangkok';
@@ -36,35 +39,35 @@ export async function seedTestDatabase(): Promise<TestData> {
   // Create users
   const renter1 = await db.orm.public.User.create({
     email: 'renter1@test.com',
-    password: await bcrypt.hash('password', 12),
+    password: await bcrypt.hash('password123', 4),
     name: 'Renter One',
     role: 'renter',
   });
 
   const renter2 = await db.orm.public.User.create({
     email: 'renter2@test.com',
-    password: await bcrypt.hash('password', 12),
+    password: await bcrypt.hash('password123', 4),
     name: 'Renter Two',
     role: 'renter',
   });
 
   const mateUser1 = await db.orm.public.User.create({
     email: 'mate1@test.com',
-    password: await bcrypt.hash('password', 12),
+    password: await bcrypt.hash('password123', 4),
     name: 'Mate One',
     role: 'mate',
   });
 
   const mateUser2 = await db.orm.public.User.create({
     email: 'mate2@test.com',
-    password: await bcrypt.hash('password', 12),
+    password: await bcrypt.hash('password123', 4),
     name: 'Mate Two',
     role: 'mate',
   });
 
   const admin = await db.orm.public.User.create({
     email: 'admin@test.com',
-    password: await bcrypt.hash('password', 12),
+    password: await bcrypt.hash('password123', 4),
     name: 'Admin',
     role: 'admin',
   });
@@ -78,6 +81,11 @@ export async function seedTestDatabase(): Promise<TestData> {
   const activity2 = await db.orm.public.Activity.where({ name: 'ดูหนัง' }).first();
   if (!activity2) {
     throw new Error('Activity "ดูหนัง" not found in database. Make sure seed.ts has run.');
+  }
+
+  const interest1 = await db.orm.public.Interest.where({ name: 'ท่องเที่ยว' }).first();
+  if (!interest1) {
+    throw new Error('Interest "ท่องเที่ยว" not found in database. Make sure seed.ts has run.');
   }
 
   // Get first province and district for testing
@@ -116,6 +124,11 @@ export async function seedTestDatabase(): Promise<TestData> {
     activityId: activity1.id,
   });
 
+  await db.orm.public.MateInterest.create({
+    mateId: mate1.id,
+    interestId: interest1.id,
+  });
+
   await db.orm.public.MateActivity.create({
     mateId: mate2.id,
     activityId: activity2.id,
@@ -152,6 +165,9 @@ export async function seedTestDatabase(): Promise<TestData> {
     mate2,
     activity1,
     activity2,
+    interest1,
+    province,
+    district,
   };
 }
 
@@ -173,6 +189,9 @@ export async function cleanupTestDatabase(): Promise<void> {
   // RefreshToken/Notification/Booking -> User, Payment/Review -> Booking,
   // MateActivity/MateInterest/MateAvailability -> Mate.
   await db.orm.public.RefreshToken.where((rt) => rt.userId.gt(0)).deleteAndCount();
+  for (const event of await db.orm.public.StripeWebhookEvent.all()) {
+    await db.orm.public.StripeWebhookEvent.where({ id: event.id }).delete();
+  }
   await db.orm.public.Payment.where((p) => p.id.gt(0)).deleteAndCount();
   await db.orm.public.Review.where((r) => r.id.gt(0)).deleteAndCount();
   await db.orm.public.Report.where((r) => r.id.gt(0)).deleteAndCount();
