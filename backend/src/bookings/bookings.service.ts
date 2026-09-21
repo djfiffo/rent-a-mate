@@ -13,6 +13,7 @@ import { MateAvailabilityService } from '../mates/mate-availability.service.js';
 import { requireBookableMate } from '../mates/mate-visibility.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
+import { db } from '../prisma/db.js';
 import type { AuthUser } from '../users/users.types.js';
 import type { PaginatedResult } from '../admin/admin.types.js';
 import { BOOKINGS_DATABASE_TOKEN } from './bookings.tokens.js';
@@ -97,14 +98,18 @@ export class BookingsService {
 
     const dateInstant = date;
 
-    // NOTE: `db.transaction()` in this ORM version has no isolation-level
-    // option and exposes no row-locking primitives (no FOR UPDATE, no
-    // advisory locks reachable from within a transaction). The overlap
-    // check-then-create below is therefore subject to the same
-    // check-then-act race window as the rest of this codebase (e.g.
-    // MatesService.create()) under concurrent requests for the same slot;
-    // it is not a regression introduced here, just a known limitation.
     const booking = await this.database.transaction(async (tx) => {
+      const lockMatePlan = db.raw.sql`
+        SELECT "id"
+        FROM "public"."mate"
+        WHERE "id" = ${dto.mateId}
+        FOR UPDATE
+      `.returnsRow({ id: { codecId: 'pg/int4@1' } }).build();
+      const lockedMates = await tx.query(lockMatePlan);
+      if (lockedMates.length !== 1) {
+        throw new NotFoundException('Mate not found');
+      }
+
       const overlapping = await tx.orm.public.Booking
         .where({ mateId: dto.mateId, date: dateInstant })
         .where((row) => row.status.in(['pending', 'confirmed']))

@@ -98,6 +98,7 @@ function createFixture() {
   const reviewTable = createTable(reviewRows, 'id', { value: 1 });
 
   const database: BookingDatabase = {
+    query: vi.fn(async () => [{ id: 3 }]) as never,
     orm: {
       public: {
         Booking: bookingTable as never,

@@ -112,16 +112,16 @@ export class AuthService {
 			}
 
 			const newJti = randomUUID();
+			if ((await this.revokeRefreshToken(tx, payload.jti, newJti)) !== 1) {
+				throw new UnauthorizedException('Invalid refresh token');
+			}
+
 			const rotatedTokens = await this.createTokenPair(
 				tx,
 				storedToken.userId,
 				payload.role,
 				newJti,
 			);
-
-			if (!(await this.revokeRefreshToken(tx, payload.jti, newJti))) {
-				throw new UnauthorizedException('Invalid refresh token');
-			}
 
 			return rotatedTokens;
 		});
@@ -273,7 +273,7 @@ export class AuthService {
 	private revokeRefreshToken(tx: TokenStorage, jti: string, replacedByJti?: string) {
 		return tx.orm.public.RefreshToken
 			.where({ jti, revokedAt: null })
-			.update({
+			.updateAndCount({
 				revokedAt: Temporal.Now.instant(),
 				replacedByJti,
 			});
