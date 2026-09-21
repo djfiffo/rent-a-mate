@@ -5,7 +5,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { CurrentUser } from '../users/decorators/current-user.decorator.js';
-import type { AuthUser } from '../users/users.types.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
 
 @Controller('auth')
 export class AuthController {

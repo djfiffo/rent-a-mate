@@ -1,3 +1,5 @@
+import type { PaginationMeta } from '../shared/types/pagination.js';
+
 export type MateSort = 'rating' | '-rating' | 'rate' | '-rate' | 'createdAt' | '-createdAt';
 
 export interface MateDiscoveryQuery {
@@ -26,13 +28,6 @@ export interface MateListItem {
   district: string;
   activities: string[];
   photoUrl: string | null;
-}
-
-export interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
 }
 
 export interface MateDiscoveryPage {

@@ -9,17 +9,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
 import { CurrentUser } from '../users/decorators/current-user.decorator.js';
-import type { AuthUser } from '../users/users.types.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
 import { ListNotificationsQueryDto } from './dto/list-notifications-query.dto.js';
 import { NotificationsService } from './notifications.service.js';
 import type { NotificationRecord } from './notifications.types.js';
-
-interface ApiResponse<T> {
-  status: 'success';
-  message: string;
-  data: T;
-}
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
@@ -35,7 +30,7 @@ export class NotificationsController {
       this.requireUserId(user),
       query.unreadOnly === true,
     );
-    return this.success('Notifications retrieved', { notifications });
+    return successResponse('Notifications retrieved', { notifications });
   }
 
   @Patch(':notificationId/read')
@@ -44,7 +39,7 @@ export class NotificationsController {
     @Param('notificationId', ParseIntPipe) notificationId: number,
   ): Promise<ApiResponse<{ notification: NotificationRecord }>> {
     const notification = await this.notificationsService.markRead(this.requireUserId(user), notificationId);
-    return this.success('Notification marked as read', { notification });
+    return successResponse('Notification marked as read', { notification });
   }
 
   @Patch('read-all')
@@ -52,7 +47,7 @@ export class NotificationsController {
     @CurrentUser() user: AuthUser | undefined,
   ): Promise<ApiResponse<{ updated: number }>> {
     const result = await this.notificationsService.markAllRead(this.requireUserId(user));
-    return this.success('Notifications marked as read', result);
+    return successResponse('Notifications marked as read', result);
   }
 
   private requireUserId(user?: AuthUser): number {
@@ -62,7 +57,4 @@ export class NotificationsController {
     return user.id;
   }
 
-  private success<T>(message: string, data: T): ApiResponse<T> {
-    return { status: 'success', message, data };
-  }
 }

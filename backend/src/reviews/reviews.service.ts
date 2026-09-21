@@ -6,7 +6,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import type { AuthUser } from '../users/users.types.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
 import { REVIEWS_DATABASE_TOKEN } from './reviews.tokens.js';
 import type { BookingRecordForReview, ReviewDatabase, ReviewDetail, ReviewRecord } from './reviews.types.js';
 import { CreateReviewDto } from './dto/create-review.dto.js';

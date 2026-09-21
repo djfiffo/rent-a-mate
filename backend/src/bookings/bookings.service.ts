@@ -14,8 +14,8 @@ import { requireBookableMate } from '../mates/mate-visibility.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
 import { db } from '../prisma/db.js';
-import type { AuthUser } from '../users/users.types.js';
-import type { PaginatedResult } from '../admin/admin.types.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
+import type { PaginatedResult } from '../shared/types/pagination.js';
 import { BOOKINGS_DATABASE_TOKEN } from './bookings.tokens.js';
 import type {
   BookingDatabase,

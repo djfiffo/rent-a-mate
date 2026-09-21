@@ -27,18 +27,6 @@ export interface AdminReport {
   createdAt: unknown;
 }
 
-export interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
-export interface PaginatedResult<T> {
-  items: T[];
-  meta: PaginationMeta;
-}
-
 export interface AdminBookingItem {
   id: number;
   renter: { id: number; name: string };

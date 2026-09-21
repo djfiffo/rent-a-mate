@@ -17,8 +17,9 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
 import { CurrentUser } from '../users/decorators/current-user.decorator.js';
-import type { AuthUser } from '../users/users.types.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
 import { CreateMateProfileDto } from './dto/create-mate-profile.dto.js';
 import { UpdateMateProfileDto  } from './dto/update-mate-profile.dto.js';
 import { MatesService } from './mates.service.js';
@@ -28,11 +29,6 @@ import { ReplaceMateAvailabilityDto } from './dto/replace-mate-availability.dto.
 import { UploadMatePhotoDto } from './dto/create-mate-photo.dto.js';
 import { MateAvailabilityService } from './mate-availability.service.js';
 import type { MateProfile, MateAvailabilityRecord, MatePhotoRecord } from './mates.types.js';
-interface ApiResponse<T> {
-  status: 'success';
-  message: string;
-  data: T;
-}
 
 @Controller('mates')
 @UseGuards(JwtAuthGuard)
@@ -51,13 +47,13 @@ export class MatesController {
     @Body() input: CreateMateProfileDto,
   ): Promise<ApiResponse<{ mate: MateProfile }>> {
     const mate = await this.matesService.create(this.requireMateUserId(user), input);
-    return this.success('Mate profile created', { mate });
+    return successResponse('Mate profile created', { mate });
   }
 
   @Get('me')
   async getProfile(@CurrentUser() user: AuthUser | undefined): Promise<ApiResponse<{ mate: MateProfile }>> {
     const mate = await this.matesService.getProfile(this.requireMateUserId(user));
-    return this.success('Mate profile retrieved', { mate });
+    return successResponse('Mate profile retrieved', { mate });
   }
 
   @Patch('me')
@@ -66,7 +62,7 @@ export class MatesController {
     @Body() input: UpdateMateProfileDto,
   ): Promise<ApiResponse<{ mate: MateProfile }>> {
     const mate = await this.matesService.update(this.requireMateUserId(user), input);
-    return this.success('Mate profile updated', { mate });
+    return successResponse('Mate profile updated', { mate });
   }
 
   @Delete('me')
@@ -74,7 +70,7 @@ export class MatesController {
     @CurrentUser() user: AuthUser | undefined,
   ): Promise<ApiResponse<{ isActive: boolean; deactivatedAt: unknown }>> {
     const mate = await this.matesService.deactivate(this.requireMateUserId(user));
-    return this.success('Mate profile deactivated', {
+    return successResponse('Mate profile deactivated', {
       isActive: mate.isActive,
       deactivatedAt: mate.deactivatedAt,
     });
@@ -94,7 +90,7 @@ export class MatesController {
     @UploadedFile() file?: { buffer: Buffer; mimetype: string },
   ): Promise<ApiResponse<{ photo: MatePhotoRecord }>> {
     const photo = await this.matesService.addPhoto(this.requireMateUserId(user), input, file);
-    return this.success('Mate photo added', { photo });
+    return successResponse('Mate photo added', { photo });
   }
 
   @Delete('me/photos/:photoId')
@@ -103,7 +99,7 @@ export class MatesController {
     @Param('photoId', ParseIntPipe) photoId: number,
   ): Promise<ApiResponse<null>> {
     await this.matesService.removePhoto(this.requireMateUserId(user), photoId);
-    return this.success('Photo removed', null);
+    return successResponse('Photo removed', null);
   }
 
   @Post('me/availability')
@@ -118,7 +114,7 @@ export class MatesController {
         input,
       );
 
-    return this.success(
+    return successResponse(
       'Mate availability created',
       { availability },
     );
@@ -133,7 +129,7 @@ export class MatesController {
         this.requireMateUserId(user),
       );
 
-    return this.success(
+    return successResponse(
       'Mate availability retrieved',
       { availability },
     );
@@ -148,7 +144,7 @@ export class MatesController {
       this.requireMateUserId(user),
       input,
     );
-    return this.success('Mate availability replaced', { slots: availability });
+    return successResponse('Mate availability replaced', { slots: availability });
   }
 
   @Patch('me/availability/:availabilityId')
@@ -164,7 +160,7 @@ export class MatesController {
         input,
       );
 
-    return this.success(
+    return successResponse(
       'Mate availability updated',
       { availability },
     );
@@ -192,7 +188,4 @@ export class MatesController {
     return user.id;
   }
 
-  private success<T>(message: string, data: T): ApiResponse<T> {
-    return { status: 'success', message, data };
-  }
 }

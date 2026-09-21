@@ -7,8 +7,8 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
-import type { AuthUser } from '../users/users.types.js';
-import type { PaginatedResult } from '../admin/admin.types.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
+import type { PaginatedResult } from '../shared/types/pagination.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { StripeProvider } from './providers/stripe.provider.js';
 import { PAYMENTS_DATABASE_TOKEN } from './payments.tokens.js';

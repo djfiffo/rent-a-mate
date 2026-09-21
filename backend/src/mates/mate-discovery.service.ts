@@ -1,11 +1,11 @@
 import { Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
+import type { PaginationMeta } from '../shared/types/pagination.js';
 import { MATES_DATABASE_TOKEN } from './mates.tokens.js';
 import type {
   MateDiscoveryPage,
   MateDiscoveryQuery,
   MateListItem,
-  PaginationMeta,
 } from './mate-discovery.types.js';
 import {
   compareNullableNumber,

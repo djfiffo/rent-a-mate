@@ -1,4 +1,5 @@
 import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { successResponse } from '../shared/http/api-response.js';
 import { MateDetailService } from './mate-detail.service.js';
 
 @Controller('mates')
@@ -7,10 +8,6 @@ export class MateDetailController {
 
   @Get(':mateId')
   async findOne(@Param('mateId', ParseIntPipe) mateId: number) {
-    return {
-      status: 'success' as const,
-      message: 'OK',
-      data: { mate: await this.detailService.findOne(mateId) },
-    };
+    return successResponse('OK', { mate: await this.detailService.findOne(mateId) });
   }
 }
