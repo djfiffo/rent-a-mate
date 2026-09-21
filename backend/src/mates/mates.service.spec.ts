@@ -52,6 +52,20 @@ describe('MatesService', () => {
     expect(result.deactivatedAt).toBe(updated.deactiveAt);
   });
 
+  it('returns only the public user fields in a mate profile', async () => {
+    const { db } = database();
+    (db.orm.public.User.where as ReturnType<typeof vi.fn>).mockReturnValue({
+      first: vi.fn().mockResolvedValue({ id: 7, name: 'Nan', email: 'nan@example.com', password: 'hash' }),
+    });
+    const service = new MatesService(db);
+
+    const result = await service.getProfile(7);
+
+    expect(result.user).toEqual({ id: 7, name: 'Nan' });
+    expect(result.user).not.toHaveProperty('email');
+    expect(result.user).not.toHaveProperty('password');
+  });
+
   it('does not persist a client-provided storage key', async () => {
     const create = vi.fn().mockResolvedValue({
       id: 1,

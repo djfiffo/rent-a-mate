@@ -43,13 +43,13 @@ describe('WsJwtGuard', () => {
     expect(jwtService.verifyAsync).toHaveBeenCalledWith('valid-token');
   });
 
-  it('falls back to handshake.query.token when handshake.auth.token is absent', async () => {
+  it('rejects a token sent only through handshake.query.token', async () => {
     const jwtService = { verifyAsync: vi.fn().mockResolvedValue({ sub: 7, role: 'renter', type: 'access' }) };
     const guard = new WsJwtGuard(jwtService as never);
     const client = createSocket({}, { token: 'query-token' });
 
-    await expect(guard.authenticate(client as never)).resolves.toEqual({ id: 7, role: 'renter' });
-    expect(jwtService.verifyAsync).toHaveBeenCalledWith('query-token');
+    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(jwtService.verifyAsync).not.toHaveBeenCalled();
   });
 
   it('rejects when no token is present', async () => {
