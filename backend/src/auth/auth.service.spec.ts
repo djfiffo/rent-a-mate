@@ -42,6 +42,17 @@ const { dbMock, refreshTokens, users } = vi.hoisted(() => {
 
               return row;
             },
+            updateAndCount: async (update: Partial<RefreshTokenRow>) => {
+              const row = refreshTokens.get(filter.jti);
+              if (!row || !matchesRevokedAt(filter, row)) return 0;
+
+              if ('revokedAt' in update) row.revokedAt = update.revokedAt;
+              if ('replacedByJti' in update) {
+                row.replacedByJti = update.replacedByJti ?? null;
+              }
+
+              return 1;
+            },
           }),
           create: async (row: RefreshTokenRow) => {
             refreshTokens.set(row.jti, row);
