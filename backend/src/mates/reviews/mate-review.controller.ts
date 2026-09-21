@@ -1,5 +1,5 @@
 import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
-import { successResponse } from '../shared/http/api-response.js';
+import { successResponse } from '../../shared/http/api-response.js';
 import { ListReviewsQueryDto } from './dto/list-reviews-query.dto.js';
 import { MateReviewService } from './mate-review.service.js';
 

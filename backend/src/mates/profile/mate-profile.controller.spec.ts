@@ -1,6 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { MatesController } from './mates.controller.js';
+import { MatesController } from './mate-profile.controller.js';
 
 const profile = {
   id: 42,

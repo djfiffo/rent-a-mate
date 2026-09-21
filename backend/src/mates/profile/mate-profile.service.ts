@@ -10,14 +10,14 @@ import {
 import { Temporal } from '@js-temporal/polyfill';
 import { CreateMateProfileDto } from './dto/create-mate-profile.dto.js';
 import { UpdateMateProfileDto } from './dto/update-mate-profile.dto.js';
-import { CreateMatePhotoDto, UploadMatePhotoDto } from './dto/create-mate-photo.dto.js';
-import { MATES_DATABASE_TOKEN } from './mates.tokens.js';
+import { CreateMatePhotoDto, UploadMatePhotoDto } from '../gallery/dto/create-mate-photo.dto.js';
+import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
 import {
   LocalMateStorageProvider,
   MATE_STORAGE_TOKEN,
   type MateUpload,
   type MateStorageProvider,
-} from './mate-storage.js';
+} from '../gallery/mate-storage.js';
 import type {
   MateDatabase,
   MateLookup,
@@ -25,7 +25,7 @@ import type {
   MateProfile,
   MateRecord,
   MateUpdate,
-} from './mates.types.js';
+} from '../internal/mates.types.js';
 
 const MAX_GALLERY_SIZE = 6;
 

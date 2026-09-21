@@ -9,8 +9,8 @@ import {
 } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
 
-import { MateAvailabilityService } from '../mates/mate-availability.service.js';
-import { requireBookableMate } from '../mates/mate-visibility.js';
+import { MateAvailabilityService } from '../mates/availability/mate-availability.service.js';
+import { requireBookableMate } from '../mates/internal/mate-visibility.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
 import { db } from '../prisma/db.js';

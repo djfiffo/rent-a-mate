@@ -1,7 +1,7 @@
 import { Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
-import type { PaginationMeta } from '../shared/types/pagination.js';
-import { MATES_DATABASE_TOKEN } from './mates.tokens.js';
+import type { PaginationMeta } from '../../shared/types/pagination.js';
+import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
 import type {
   MateDiscoveryPage,
   MateDiscoveryQuery,
@@ -15,7 +15,7 @@ import {
   toMinutes,
   type DiscoveryDatabase,
 } from './mate-discovery.shared.js';
-import { isPublicMateOwner } from './mate-visibility.js';
+import { isPublicMateOwner } from '../internal/mate-visibility.js';
 
 const TIMEZONE = 'Asia/Bangkok';
 

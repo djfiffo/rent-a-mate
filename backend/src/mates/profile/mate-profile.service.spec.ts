@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
-import { MatesService } from './mates.service.js';
+import { MatesService } from './mate-profile.service.js';
 
 const mate = {
   id: 11,

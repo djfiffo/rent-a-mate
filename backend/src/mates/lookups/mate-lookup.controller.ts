@@ -1,5 +1,5 @@
 import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
-import { successResponse } from '../shared/http/api-response.js';
+import { successResponse } from '../../shared/http/api-response.js';
 import { MateLookupService } from './mate-lookup.service.js';
 
 @Controller()

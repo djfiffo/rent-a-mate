@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { MATES_DATABASE_TOKEN } from './mates.tokens.js';
-import { modelRows, type DiscoveryDatabase } from './mate-discovery.shared.js';
+import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
+import { modelRows, type DiscoveryDatabase } from '../discovery/mate-discovery.shared.js';
 
 export interface LookupItem {
   id: number;

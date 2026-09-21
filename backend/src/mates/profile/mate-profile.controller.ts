@@ -16,19 +16,19 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
-import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
-import type { AuthUser } from '../shared/types/auth-user.js';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard.js';
+import { successResponse, type ApiResponse } from '../../shared/http/api-response.js';
+import { CurrentUser } from '../../shared/http/decorators/current-user.decorator.js';
+import type { AuthUser } from '../../shared/types/auth-user.js';
 import { CreateMateProfileDto } from './dto/create-mate-profile.dto.js';
 import { UpdateMateProfileDto  } from './dto/update-mate-profile.dto.js';
-import { MatesService } from './mates.service.js';
-import { CreateMateAvailabilityDto } from './dto/create-mate-availability.dto.js';
-import { UpdateMateAvailabilityDto } from './dto/update-mate-availability.dto.js';
-import { ReplaceMateAvailabilityDto } from './dto/replace-mate-availability.dto.js';
-import { UploadMatePhotoDto } from './dto/create-mate-photo.dto.js';
-import { MateAvailabilityService } from './mate-availability.service.js';
-import type { MateProfile, MateAvailabilityRecord, MatePhotoRecord } from './mates.types.js';
+import { MatesService } from './mate-profile.service.js';
+import { CreateMateAvailabilityDto } from '../availability/dto/create-mate-availability.dto.js';
+import { UpdateMateAvailabilityDto } from '../availability/dto/update-mate-availability.dto.js';
+import { ReplaceMateAvailabilityDto } from '../availability/dto/replace-mate-availability.dto.js';
+import { UploadMatePhotoDto } from '../gallery/dto/create-mate-photo.dto.js';
+import { MateAvailabilityService } from '../availability/mate-availability.service.js';
+import type { MateProfile, MateAvailabilityRecord, MatePhotoRecord } from '../internal/mates.types.js';
 
 @Controller('mates')
 @UseGuards(JwtAuthGuard)

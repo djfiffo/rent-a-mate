@@ -2,7 +2,8 @@ import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { describe, expect, it } from 'vitest';
-import { CreateMateProfileDto, UpdateMateProfileDto } from './index.js';
+import { CreateMateProfileDto } from './create-mate-profile.dto.js';
+import { UpdateMateProfileDto } from './update-mate-profile.dto.js';
 
 async function errorsFor<T extends object>(type: new () => T, input: object) {
   return validate(plainToInstance(type, input));

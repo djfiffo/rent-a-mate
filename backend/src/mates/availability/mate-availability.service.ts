@@ -10,13 +10,13 @@ import { Temporal } from '@js-temporal/polyfill';
 import { CreateMateAvailabilityDto } from './dto/create-mate-availability.dto.js';
 import { UpdateMateAvailabilityDto } from './dto/update-mate-availability.dto.js';
 import { ReplaceMateAvailabilityDto } from './dto/replace-mate-availability.dto.js';
-import { MATES_DATABASE_TOKEN } from './mates.tokens.js';
-import { requirePublicMate } from './mate-visibility.js';
+import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
+import { requirePublicMate } from '../internal/mate-visibility.js';
 import type {
   MateAvailabilityRecord,
   MateDatabase,
   MateQueryRecord,
-} from './mates.types.js';
+} from '../internal/mates.types.js';
 
 const TIMEZONE = 'Asia/Bangkok';
 

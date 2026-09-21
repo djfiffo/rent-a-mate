@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NestMinioModule } from 'nestjs-minio';
-import { LocalMateStorageProvider, MATE_STORAGE_TOKEN } from '../mates/mate-storage.js';
+import { LocalMateStorageProvider, MATE_STORAGE_TOKEN } from '../mates/gallery/mate-storage.js';
 import { MINIO_STORAGE_CONFIG, MinioMateStorageProvider } from './minio-mate-storage.provider.js';
 import { readMinioConfig } from './minio.config.js';
 

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { MATES_DATABASE_TOKEN } from './mates.tokens.js';
-import { averageRating, rowsByIds, toEpochMillis, type DiscoveryDatabase } from './mate-discovery.shared.js';
-import { requirePublicMate } from './mate-visibility.js';
+import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
+import { averageRating, rowsByIds, toEpochMillis, type DiscoveryDatabase } from '../discovery/mate-discovery.shared.js';
+import { requirePublicMate } from '../internal/mate-visibility.js';
 
 export interface MateReviewPage {
   averageRating: number | null;

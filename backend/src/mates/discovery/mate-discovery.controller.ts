@@ -1,9 +1,9 @@
 import { Controller, Get, Optional, Param, ParseIntPipe, Query } from '@nestjs/common';
-import { successResponse } from '../shared/http/api-response.js';
+import { successResponse } from '../../shared/http/api-response.js';
 import { ListMatesQueryDto } from './dto/list-mates-query.dto.js';
 import { normalizeMateDiscoveryQuery } from './mate-discovery.query.js';
 import { MateDiscoveryService } from './mate-discovery.service.js';
-import { MateAvailabilityService } from './mate-availability.service.js';
+import { MateAvailabilityService } from '../availability/mate-availability.service.js';
 
 @Controller('mates')
 export class MateDiscoveryController {
