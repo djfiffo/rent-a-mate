@@ -2,11 +2,11 @@
 
 ## 1. สถานะและขอบเขตเอกสาร
 
-เอกสารนี้เป็นแผนทดสอบระบบตาม Overview, Functional Requirements, Non-Functional Requirements และ Technical/Feature Requirements ที่เจ้าของโปรเจกต์ให้มา เทียบกับ source code ปัจจุบัน ไม่ใช่รายงานว่าทุกเคสถูก implement หรือรันผ่านแล้ว
+เอกสารนี้เป็นแผนทดสอบระบบตาม Overview, Functional Requirements, Non-Functional Requirements และ Technical/Feature Requirements ที่เจ้าของโปรเจกต์ให้มา เทียบกับ source code ปัจจุบัน ตารางด้านล่างเป็น requirement-level coverage จึงมีทั้งเคสที่รวมอยู่ใน executable tests แล้ว, Risk ที่ test ตรวจพบว่า fail และ Gap ที่ยังไม่มี implementation ให้ทดสอบ
 
 การทบทวนครอบคลุมไฟล์ของโปรเจกต์ใน Git: backend modules, controllers, services, guards, DTOs, types, unit tests, E2E/fixtures, เอกสาร, package/config, seed/reference data, Prisma contract/generated types และ migration snapshots โดยใช้ runtime code และ contract ปัจจุบันเป็นหลักเมื่อเอกสารเก่าหรือ comments ไม่ตรงกัน ไม่ใช้ dependencies, build output หรือค่า secrets จริงเป็นข้อกำหนดของระบบ
 
-ปัจจุบัน executable E2E มีเพียง `test/app.e2e-spec.ts`: สร้าง AppModule แล้วตรวจ `GET /api/v1` ได้ `200 Hello World!` การเพิ่ม flow ในไฟล์นี้ไม่ได้เพิ่ม executable tests, เปลี่ยน application code, เปลี่ยน config หรือสร้าง commit
+ปัจจุบันมี executable E2E 65 tests ใน 7 spec files ครอบคลุม HTTP 59 routes, Socket.IO 5 events, authentication/authorization, provider boundaries และ complete/concurrent journeys โดยหนึ่ง test อาจยืนยันหลาย case IDs ที่อยู่ใน flow เดียวกัน ชุดทดสอบใช้ PostgreSQL test database จริง, Socket.IO client จริง และ fake เฉพาะ Stripe outbound provider เพื่อให้ deterministic; ไม่ถือว่าแทน Stripe sandbox หรือ MinIO integration tests
 
 สถานะที่ใช้ในเอกสาร:
 
@@ -44,11 +44,11 @@
 
 ### 3.1 Harness ที่ต้องเตรียมเมื่อนำแผนไป implement
 
-1. ตั้ง env ของ test ก่อน import AppModule/db เพราะบางค่าอ่านตอนโหลด module: `NODE_ENV=test`, DATABASE_URL ของฐานข้อมูลทดสอบ, JWT_ACCESS_SECRET/JWT_REFRESH_SECRET คนละค่า, API_PREFIX, CORS_ORIGIN และ provider config ตาม suite
+1. `test/e2e-setup.ts` ตั้ง env ของ test ก่อน import AppModule/db: `NODE_ENV=test`, DATABASE_URL ของฐานข้อมูลทดสอบ, JWT_ACCESS_SECRET/JWT_REFRESH_SECRET คนละค่า, API_PREFIX, CORS_ORIGIN และ provider config ตาม suite
 2. ใช้ PostgreSQL จริงที่ตรงกับ contract ปัจจุบันสำหรับ backend E2E; ไม่ mock guards, AuthService, MessagesService หรือ ORM ของ suite ที่อ้างว่าเป็น E2E
-3. ยืนยันชื่อ database/host เป็น target ทดสอบก่อน seed/cleanup ทุกครั้ง; `docker-compose.yml` ปัจจุบันใช้ฐานข้อมูล development ไม่ได้แยก test ให้
-4. `test/setup.ts` ยังไม่ได้ถูกผูกใน `vitest.config.e2e.ts` และใช้ `DATABASE_URL ??=`; ห้ามถือว่าการมีไฟล์นี้ป้องกันการใช้ฐานข้อมูล development อยู่แล้ว
-5. สร้างแอปด้วย `bodyParser: false`; ลง `express.raw({ type: 'application/json' })` ที่ webhook ก่อน `express.json()`; ตั้ง global prefix และ CORS เหมือน `src/main.ts`
+3. `test/e2e-setup.ts` ยืนยันชื่อ database ต้องตรง test convention ก่อนโหลดแอป; หากไม่กำหนด `TEST_DATABASE_URL` จะ derive ชื่อโดยเติม `_test` จาก `DATABASE_URL` และไม่ใช้ฐาน development โดยตรง
+4. `vitest.config.e2e.ts` ผูก setup file และบังคับรัน test files แบบ sequential เพื่อให้ fixture cleanup ไม่ชนกัน
+5. `test/fixtures/e2e-app.ts` สร้างแอปด้วย `bodyParser: false`; ลง `express.raw({ type: 'application/json' })` ที่ webhook ก่อน `express.json()`; ตั้ง global prefix และ ValidationPipe เหมือน `src/main.ts`
 6. ใช้ ValidationPipe เหมือน runtime: `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`, `enableImplicitConversion: false`
 7. HTTP ใช้ Supertest ผ่าน HTTP server; Socket.IO ใช้ server ที่ listen บนพอร์ตว่างและ client จริง namespace `/chat` ไม่ใช่ `/api/v1/chat`; จัด listener ก่อน connect/emit
 8. ปิด sockets/listeners/server/DB resources หลัง suite รวมกรณี assertion ล้มเหลว; มี deadline สำหรับ ACK/event/absence checks และปิด reconnect ใน rejection tests
@@ -83,7 +83,7 @@
 - Cleanup ต้องลบเฉพาะข้อมูลและ object ของ test run ใน isolated environment โดยลบ child ก่อน parent; ไม่ลบ production/development หรือ lookup ส่วนกลาง
 - ลำดับ DB: StripeWebhookEvent ของ run; RefreshToken, Payment, Review, Report, Notification, Message; Booking; MatePhoto/MateAvailability/MateActivity/MateInterest; Mate; User
 - ลบ MinIO objects ที่สร้างโดย run ก่อนลบ metadata; ปิด client ก่อน cleanup กันมี message มาถึงหลังลบ fixture
-- `fixtures/test-setup.ts` เดิมล้างข้อมูลทุก user ที่ id > 0, ยังไม่ล้าง StripeWebhookEvent/object และยังไม่มี fixture ครบทุก feature; ต้องจัด isolation ก่อนนำไปใช้ แผนนี้ไม่ได้แก้ helper นั้น
+- `fixtures/test-setup.ts` ล้าง relational test data รวม StripeWebhookEvent และสร้าง fixture หลักที่แต่ละ test file reset ก่อนใช้งาน; setup ป้องกันไม่ให้ helper ทำงานกับฐานข้อมูลที่ชื่อไม่ตรง test convention
 
 ## 4. Transport Contract และ Endpoint Inventory
 
