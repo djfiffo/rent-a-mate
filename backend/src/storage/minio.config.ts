@@ -50,10 +50,12 @@ export function readMinioConfig(env: NodeJS.ProcessEnv = process.env): MinioStor
   }
 
   const publicUrl = values.MINIO_PUBLIC_URL!;
-  try {
-    new URL(publicUrl);
-  } catch {
-    throw new Error('MINIO_PUBLIC_URL must be an absolute URL');
+  if (!publicUrl.startsWith('/') || publicUrl.startsWith('//')) {
+    try {
+      new URL(publicUrl);
+    } catch {
+      throw new Error('MINIO_PUBLIC_URL must be an absolute URL or an absolute path');
+    }
   }
 
   return {

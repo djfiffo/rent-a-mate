@@ -45,7 +45,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: matefor
-      MINIO_PUBLIC_URL: https://test-host.invalid/uploads
+      MINIO_PUBLIC_URL: /api/v1/uploads
       DEMO_ACCOUNT_PASSWORD: ${DEMO_ACCOUNT_PASSWORD:?DEMO_ACCOUNT_PASSWORD is required}
     ports:
       - "192.168.1.161:3002:3000"
