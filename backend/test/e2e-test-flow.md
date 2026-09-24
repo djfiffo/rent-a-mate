@@ -401,7 +401,7 @@ Business error ที่ handler catch จะเป็น ACK `{ok:false,error}`
 | WS-05 | Token ของ user หาย/banned/inactive และ token role เก่า | reject สามกรณีแรก; role จริงอ่านจาก DB ตอนเชื่อมต่อ |
 | WS-06 | R1/M1 join_booking {bookingId:B} | ACK ok; join booking:B; repeat join ไม่เพิ่ม broadcast ซ้ำ |
 | WS-07 | Outsider/unrelated admin join/send/typing/mark_read และ booking ไม่มี | ACK error; ไม่เข้า room, ไม่เขียน/อ่าน, ไม่ broadcast |
-| WS-08 | REST POST จาก participant confirmed/completed | REST คืน message; new_message ไปทุก socket ใน room รวม sender ที่ join แล้ว; DB มี message เดียว |
+| WS-08 | REST POST จาก participant confirmed/completed และ retry ด้วย clientMessageId เดิม | REST คืน message เดิม; new_message ไปทุก socket ครั้งเดียว; DB/notification มีอย่างละหนึ่ง |
 | WS-09 | pending/cancelled REST POST | HTTP 422 MESSAGE_NOT_ALLOWED; DB/notification/broadcast ไม่เพิ่ม |
 | WS-10 | ส่งโดย participant ที่ยังไม่ join room | authorization ตาม booking ยังผ่าน; DB เขียนได้; ผู้ส่งไม่ได้ room broadcast แต่ได้ ACK ตาม code |
 | WS-11 | typing true/false | broadcast bookingId/userId/isTyping เฉพาะคนอื่นใน room; sender ไม่ได้ echo; ไม่บันทึก DB/notification |

@@ -82,3 +82,8 @@ export interface CreateMessageResult {
   readAt: MessageRecord['readAt'];
   createdAt: MessageRecord['createdAt'];
 }
+
+export interface CreateMessageOutcome {
+  message: CreateMessageResult;
+  created: boolean;
+}

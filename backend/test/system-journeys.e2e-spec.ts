@@ -1,4 +1,5 @@
 import { Temporal } from '@js-temporal/polyfill';
+import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types';
@@ -100,7 +101,7 @@ describe('Complete journeys and concurrency invariants (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/api/v1/bookings/${bookingId}/messages`)
       .set(bearer(renter.accessToken))
-      .send({ content: 'See you soon' })
+      .send({ clientMessageId: randomUUID(), content: 'See you soon' })
       .expect(201);
 
     const pastDate = Temporal.Now.zonedDateTimeISO('Asia/Bangkok')

@@ -1,5 +1,6 @@
 import { Temporal } from '@js-temporal/polyfill';
 import type { INestApplication } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { io, type Socket } from 'socket.io-client';
@@ -153,11 +154,13 @@ describe('Socket.IO booking chat (e2e)', () => {
       mate,
       'new_message',
     );
+    const clientMessageId = randomUUID();
     const created = await postMessage(
       app,
       tokens.renter1.accessToken,
       booking.id,
       '  Hello mate  ',
+      clientMessageId,
     );
     expect(created).toMatchObject({
       bookingId: booking.id,
@@ -170,6 +173,21 @@ describe('Socket.IO booking chat (e2e)', () => {
     expect(await mateBroadcast).toMatchObject({
       id: created.id,
     });
+
+    let retryBroadcast = false;
+    mate.once('new_message', () => {
+      retryBroadcast = true;
+    });
+    const retried = await postMessage(
+      app,
+      tokens.renter1.accessToken,
+      booking.id,
+      'Hello mate',
+      clientMessageId,
+    );
+    expect(retried.id).toBe(created.id);
+    await delay(50);
+    expect(retryBroadcast).toBe(false);
 
     expect(
       await db.orm.public.Message.where({ bookingId: booking.id }).all(),
@@ -186,7 +204,7 @@ describe('Socket.IO booking chat (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/api/v1/bookings/${pending.id}/messages`)
       .set('Authorization', `Bearer ${tokens.renter1.accessToken}`)
-      .send({ content: 'Too early' })
+      .send({ clientMessageId: randomUUID(), content: 'Too early' })
       .expect(422);
   });
 
@@ -311,6 +329,7 @@ async function postMessage(
   accessToken: string,
   bookingId: number,
   content: string,
+  clientMessageId = randomUUID(),
 ): Promise<{
   id: number;
   bookingId: number;
@@ -320,7 +339,7 @@ async function postMessage(
   const response = await request(app.getHttpServer())
     .post(`/api/v1/bookings/${bookingId}/messages`)
     .set('Authorization', `Bearer ${accessToken}`)
-    .send({ content })
+    .send({ clientMessageId, content })
     .expect(201);
   return response.body.data as {
     id: number;

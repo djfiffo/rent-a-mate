@@ -1,4 +1,5 @@
 import { Temporal } from '@js-temporal/polyfill';
+import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types';
@@ -437,7 +438,7 @@ describe('Bookings, reviews, REST messages, and notifications (e2e)', () => {
     const sent = await request(app.getHttpServer())
       .post(path)
       .set(bearer(tokens.renter1))
-      .send({ content: '  สวัสดีครับ  ' })
+      .send({ clientMessageId: randomUUID(), content: '  สวัสดีครับ  ' })
       .expect(201);
     expect(sent.body.data).toMatchObject({
       bookingId: booking.id,
@@ -461,7 +462,7 @@ describe('Bookings, reviews, REST messages, and notifications (e2e)', () => {
     await request(app.getHttpServer())
       .post(path)
       .set(bearer(tokens.mate1))
-      .send({ content: '   ' })
+      .send({ clientMessageId: randomUUID(), content: '   ' })
       .expect(400);
 
     const notification = await db.orm.public.Notification.where({
@@ -480,7 +481,7 @@ describe('Bookings, reviews, REST messages, and notifications (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/api/v1/bookings/${pending.id}/messages`)
       .set(bearer(tokens.renter1))
-      .send({ content: 'Too early' })
+      .send({ clientMessageId: randomUUID(), content: 'Too early' })
       .expect(422);
     await request(app.getHttpServer())
       .get(`/api/v1/bookings/${pending.id}/messages`)

@@ -11,7 +11,8 @@ channel:
 ## Message flow
 
 The client always sends a message with REST, whether the socket is connected
-or not. `MessagesController` calls `MessagesService.create()` exactly once.
+or not. Each user action carries a UUID `clientMessageId`, and a retry reuses
+the same UUID. `MessagesController` calls `MessagesService.create()` exactly once.
 That service writes the message and recipient notification in one transaction.
 Only after it resolves does the controller publish a message-created event;
 the gateway observes that result and emits `new_message` without writing to the
@@ -20,6 +21,10 @@ database again.
 Clients should merge the REST response and `new_message` event by message ID.
 The sender can receive both representations of the same committed row, but it
 must render only one message.
+
+The database has a unique `(senderId, clientMessageId)` constraint. If a REST
+response is lost and the client retries, the backend returns the original row,
+does not create another notification, and does not broadcast the row again.
 
 | Situation | Transport |
 |---|---|

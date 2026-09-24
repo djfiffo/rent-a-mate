@@ -71,6 +71,11 @@ function createTable(
 const RENTER_ID = 7;
 const MATE_USER_ID = 5;
 const OTHER_RENTER_ID = 8;
+const CLIENT_MESSAGE_ID = 'fd3b5666-9e9d-49d9-a843-098bebf786db';
+
+function messageDto(content: string) {
+  return { clientMessageId: CLIENT_MESSAGE_ID, content };
+}
 
 function createFixture() {
   const bookingRows: Row[] = [
@@ -194,15 +199,20 @@ describe('MessagesService', () => {
 
   describe('create', () => {
     it('persists a message and notifies the other participant when the booking is confirmed', async () => {
-      const result = await fixture.service.create({ id: RENTER_ID }, 2, {
-        content: 'Hello',
-      });
+      const result = await fixture.service.create(
+        { id: RENTER_ID },
+        2,
+        messageDto('Hello'),
+      );
 
       expect(result).toMatchObject({
-        bookingId: 2,
-        senderId: RENTER_ID,
-        content: 'Hello',
-        readAt: null,
+        created: true,
+        message: {
+          bookingId: 2,
+          senderId: RENTER_ID,
+          content: 'Hello',
+          readAt: null,
+        },
       });
       expect(fixture.messageRows).toHaveLength(1);
 
@@ -215,9 +225,11 @@ describe('MessagesService', () => {
     });
 
     it('notifies the renter when the mate owner sends the message', async () => {
-      await fixture.service.create({ id: MATE_USER_ID }, 2, {
-        content: 'Hi there',
-      });
+      await fixture.service.create(
+        { id: MATE_USER_ID },
+        2,
+        messageDto('Hi there'),
+      );
 
       expect(fixture.notificationRows[0]).toMatchObject({
         userId: RENTER_ID,
@@ -227,35 +239,50 @@ describe('MessagesService', () => {
 
     it('allows sending once the booking is completed', async () => {
       await expect(
-        fixture.service.create({ id: RENTER_ID }, 3, { content: 'Thanks!' }),
+        fixture.service.create({ id: RENTER_ID }, 3, messageDto('Thanks!')),
       ).resolves.toMatchObject({
-        bookingId: 3,
+        message: { bookingId: 3 },
       });
+    });
+
+    it('returns the original message without a second write or notification on retry', async () => {
+      const first = await fixture.service.create(
+        { id: RENTER_ID },
+        2,
+        messageDto('Hello'),
+      );
+      const retry = await fixture.service.create(
+        { id: RENTER_ID },
+        2,
+        messageDto('Hello'),
+      );
+
+      expect(retry).toEqual({ message: first.message, created: false });
+      expect(fixture.messageRows).toHaveLength(1);
+      expect(fixture.notificationRows).toHaveLength(1);
     });
 
     it('rejects sending while the booking is still pending', async () => {
       await expect(
-        fixture.service.create({ id: RENTER_ID }, 1, { content: 'Hello' }),
+        fixture.service.create({ id: RENTER_ID }, 1, messageDto('Hello')),
       ).rejects.toMatchObject({
         message: 'MESSAGE_NOT_ALLOWED',
       });
       await expect(
-        fixture.service.create({ id: RENTER_ID }, 1, { content: 'Hello' }),
+        fixture.service.create({ id: RENTER_ID }, 1, messageDto('Hello')),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
       expect(fixture.messageRows).toHaveLength(0);
     });
 
     it('rejects sending after the booking is cancelled', async () => {
       await expect(
-        fixture.service.create({ id: RENTER_ID }, 4, { content: 'Hello' }),
+        fixture.service.create({ id: RENTER_ID }, 4, messageDto('Hello')),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
 
     it('rejects a non-participant from sending', async () => {
       await expect(
-        fixture.service.create({ id: OTHER_RENTER_ID }, 2, {
-          content: 'Hello',
-        }),
+        fixture.service.create({ id: OTHER_RENTER_ID }, 2, messageDto('Hello')),
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(fixture.messageRows).toHaveLength(0);
     });

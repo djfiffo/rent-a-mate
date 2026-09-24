@@ -56,8 +56,8 @@ export class MessagesController {
   ): Promise<ApiResponse<CreateMessageResult>> {
     const authUser = this.requireUser(user);
     const result = await this.messagesService.create(authUser, bookingId, dto);
-    this.messagesEvents.publishCreated(result);
-    return successResponse('Message sent', result);
+    if (result.created) this.messagesEvents.publishCreated(result.message);
+    return successResponse('Message sent', result.message);
   }
 
   private requireUser(user: AuthUser | undefined): AuthUser {

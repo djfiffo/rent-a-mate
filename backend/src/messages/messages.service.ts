@@ -11,6 +11,7 @@ import type { PaginatedResult } from '../shared/types/pagination.js';
 import { MESSAGES_DATABASE_TOKEN } from './messages.tokens.js';
 import type {
   CreateMessageResult,
+  CreateMessageOutcome,
   MessageDatabase,
   MessageParticipants,
   MessageRecord,
@@ -114,7 +115,7 @@ export class MessagesService {
     user: AuthUser,
     bookingId: number,
     dto: CreateMessageDto,
-  ): Promise<CreateMessageResult> {
+  ): Promise<CreateMessageOutcome> {
     const { booking, recipientId } = await this.assertParticipant(
       user,
       bookingId,
@@ -124,32 +125,45 @@ export class MessagesService {
       throw new UnprocessableEntityException('MESSAGE_NOT_ALLOWED');
     }
 
-    return this.database.transaction(async (tx) => {
-      const message = await tx.orm.public.Message.create({
-        bookingId,
-        senderId: user.id,
-        content: dto.content,
-      });
+    const existing = await this.findByClientMessageId(
+      user.id,
+      dto.clientMessageId,
+    );
+    if (existing) {
+      return { message: this.toResult(existing), created: false };
+    }
 
-      await this.notificationsService.create(
-        {
-          userId: recipientId,
-          type: 'message_received',
-          message: 'You have a new message',
+    try {
+      const message = await this.database.transaction(async (tx) => {
+        const created = await tx.orm.public.Message.create({
           bookingId,
-        },
-        tx,
-      );
+          senderId: user.id,
+          clientMessageId: dto.clientMessageId,
+          content: dto.content,
+        });
 
-      return {
-        id: message.id,
-        bookingId: message.bookingId,
-        senderId: message.senderId,
-        content: message.content,
-        readAt: message.readAt,
-        createdAt: message.createdAt,
-      };
-    });
+        await this.notificationsService.create(
+          {
+            userId: recipientId,
+            type: 'message_received',
+            message: 'You have a new message',
+            bookingId,
+          },
+          tx,
+        );
+
+        return this.toResult(created);
+      });
+      return { message, created: true };
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) throw error;
+      const raced = await this.findByClientMessageId(
+        user.id,
+        dto.clientMessageId,
+      );
+      if (!raced) throw error;
+      return { message: this.toResult(raced), created: false };
+    }
   }
 
   /**
@@ -186,4 +200,31 @@ export class MessagesService {
     }
     return new Date(String(value)).getTime();
   }
+
+  private findByClientMessageId(senderId: number, clientMessageId: string) {
+    return this.database.orm.public.Message.where({
+      senderId,
+      clientMessageId,
+    }).first();
+  }
+
+  private toResult(message: MessageRecord): CreateMessageResult {
+    return {
+      id: message.id,
+      bookingId: message.bookingId,
+      senderId: message.senderId,
+      content: message.content,
+      readAt: message.readAt,
+      createdAt: message.createdAt,
+    };
+  }
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
 }
