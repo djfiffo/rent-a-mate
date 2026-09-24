@@ -12,6 +12,7 @@ import { db } from '../prisma/db.js';
 import { PasswordHashService } from '../shared/security/password/password-hash.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
 
 type AuthTokenPayload = {
 	sub: number;
@@ -20,13 +21,31 @@ type AuthTokenPayload = {
 	type: 'access' | 'refresh';
 };
 
+type SocketTicketPayload = {
+	sub: number;
+	role?: string;
+	jti: string;
+	type: 'socket_ticket';
+};
+
 type TokenStorage = Pick<typeof db, 'orm'>;
 
 const ACCESS_TOKEN_TTL = process.env['JWT_ACCESS_TTL'] ?? '15m';
 const REFRESH_TOKEN_TTL = '30d';
+const configuredSocketTicketTtl = Number(process.env['SOCKET_TICKET_TTL_SECONDS'] ?? 60);
+const SOCKET_TICKET_TTL_SECONDS = Number.isFinite(configuredSocketTicketTtl)
+	? Math.max(10, Math.floor(configuredSocketTicketTtl))
+	: 60;
 
 @Injectable()
 export class AuthService {
+	/**
+	 * A ticket is deliberately registered before it is handed to the browser,
+	 * then atomically removed by `consumeSocketTicket`. A process restart also
+	 * invalidates outstanding tickets, which is safe because clients retry by
+	 * requesting a fresh ticket through the authenticated BFF route.
+	 */
+	private readonly socketTickets = new Map<string, number>();
 	constructor(
 		private readonly jwtService: JwtService,
 		private readonly passwordService: PasswordHashService,
@@ -63,7 +82,9 @@ export class AuthService {
 	}
 
 	async login(dto: LoginDto) {
-		const user = await db.orm.public.User.where({ email: dto.email.trim().toLowerCase() }).first();
+		const user = await db.orm.public.User.where({
+			email: dto.email.trim().toLowerCase(),
+		}).first();
 		if (!user || !(await this.passwordService.verify(dto.password, user.password))) {
 			throw new UnauthorizedException('Invalid email or password');
 		}
@@ -96,14 +117,13 @@ export class AuthService {
 		const tokens = await db.transaction(async (tx) => {
 			const storedToken = await this.findStoredRefreshToken(tx, payload.jti);
 
-			if (
-				!storedToken ||
-				!this.isRefreshTokenUsable(storedToken, refreshToken, payload.sub)
-			) {
+			if (!storedToken || !this.isRefreshTokenUsable(storedToken, refreshToken, payload.sub)) {
 				throw new UnauthorizedException('Invalid refresh token');
 			}
 
-			const user = await tx.orm.public.User.where({ id: storedToken.userId }).first();
+			const user = await tx.orm.public.User.where({
+				id: storedToken.userId,
+			}).first();
 			if (!user || user.isBanned) {
 				throw new ForbiddenException('Account is banned');
 			}
@@ -116,12 +136,7 @@ export class AuthService {
 				throw new UnauthorizedException('Invalid refresh token');
 			}
 
-			const rotatedTokens = await this.createTokenPair(
-				tx,
-				storedToken.userId,
-				payload.role,
-				newJti,
-			);
+			const rotatedTokens = await this.createTokenPair(tx, storedToken.userId, payload.role, newJti);
 
 			return rotatedTokens;
 		});
@@ -165,16 +180,62 @@ export class AuthService {
 		};
 	}
 
+	async createSocketTicket(user: AuthUser): Promise<{ status: 'success'; message: string; data: { ticket: string } }> {
+		const jti = randomUUID();
+		const expiresAt = Date.now() + SOCKET_TICKET_TTL_SECONDS * 1000;
+		this.pruneExpiredSocketTickets();
+		this.socketTickets.set(jti, expiresAt);
+		const ticket = await this.jwtService.signAsync(
+			{ sub: user.id, role: user.role, jti, type: 'socket_ticket' },
+			{
+				secret: this.socketTicketSecret,
+				expiresIn: `${SOCKET_TICKET_TTL_SECONDS}s`,
+			},
+		);
+		return {
+			status: 'success',
+			message: 'Socket ticket created',
+			data: { ticket },
+		};
+	}
+
+	/** Returns the authenticated principal once, deleting the ticket first. */
+	async consumeSocketTicket(ticket: string): Promise<AuthUser> {
+		let payload: SocketTicketPayload;
+		try {
+			payload = await this.jwtService.verifyAsync<SocketTicketPayload>(ticket, {
+				secret: this.socketTicketSecret,
+			});
+		} catch {
+			throw new UnauthorizedException('Invalid socket ticket');
+		}
+		if (payload.type !== 'socket_ticket' || !payload.jti || !Number.isInteger(payload.sub)) {
+			throw new UnauthorizedException('Invalid socket ticket');
+		}
+		const expiresAt = this.socketTickets.get(payload.jti);
+		this.socketTickets.delete(payload.jti);
+		if (!expiresAt || expiresAt <= Date.now()) {
+			throw new UnauthorizedException('Socket ticket expired or already used');
+		}
+		return { id: payload.sub, role: payload.role as AuthUser['role'] };
+	}
+
 	private readonly accessSecret = process.env['JWT_ACCESS_SECRET'];
 
 	private readonly refreshSecret = process.env['JWT_REFRESH_SECRET'];
 
+	private readonly socketTicketSecret = process.env['JWT_SOCKET_TICKET_SECRET'] ?? this.accessSecret;
+
+	private pruneExpiredSocketTickets(now = Date.now()) {
+		for (const [jti, expiresAt] of this.socketTickets) {
+			if (expiresAt <= now) this.socketTickets.delete(jti);
+		}
+	}
+
 	private async issueTokenPair(userId: number, role: string) {
 		const accessJti = randomUUID();
 		const refreshJti = randomUUID();
-		return db.transaction((tx) =>
-			this.createTokenPair(tx, userId, role, refreshJti, accessJti),
-		);
+		return db.transaction((tx) => this.createTokenPair(tx, userId, role, refreshJti, accessJti));
 	}
 
 	private async createTokenPair(
@@ -254,12 +315,7 @@ export class AuthService {
 		);
 	}
 
-	private saveRefreshToken(
-		tx: TokenStorage,
-		userId: number,
-		refreshToken: string,
-		jti: string,
-	) {
+	private saveRefreshToken(tx: TokenStorage, userId: number, refreshToken: string, jti: string) {
 		return tx.orm.public.RefreshToken.create({
 			userId,
 			tokenHash: this.hashToken(refreshToken),
@@ -271,12 +327,13 @@ export class AuthService {
 	}
 
 	private revokeRefreshToken(tx: TokenStorage, jti: string, replacedByJti?: string) {
-		return tx.orm.public.RefreshToken
-			.where({ jti, revokedAt: null })
-			.updateAndCount({
-				revokedAt: Temporal.Now.instant(),
-				replacedByJti,
-			});
+		return tx.orm.public.RefreshToken.where({
+			jti,
+			revokedAt: null,
+		}).updateAndCount({
+			revokedAt: Temporal.Now.instant(),
+			replacedByJti,
+		});
 	}
 
 	private toPublicUser(user: { id: number; name: string; email: string; role: string }) {

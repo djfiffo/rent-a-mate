@@ -107,6 +107,20 @@ describe('AuthService', () => {
     expect(service).toBeDefined();
   });
 
+  it('issues a short-lived socket ticket that can only be consumed once', async () => {
+    const issued = await service.createSocketTicket({ id: 7, role: 'renter' });
+
+    await expect(
+      service.consumeSocketTicket(issued.data.ticket),
+    ).resolves.toEqual({
+      id: 7,
+      role: 'renter',
+    });
+    await expect(
+      service.consumeSocketTicket(issued.data.ticket),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
   it('logs out with a valid refresh token and revokes it by jti', async () => {
     const { refreshToken, row } = await createStoredRefreshToken(jwtService);
 

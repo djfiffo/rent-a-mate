@@ -12,14 +12,15 @@ import { PasswordModule } from '../shared/security/password/password.module.js';
       defaultStrategy: 'jwt',
     }),
     JwtModule.register({
-      secret:
-        process.env['JWT_ACCESS_SECRET'],
-      signOptions: { expiresIn: (process.env['JWT_ACCESS_TTL'] ?? '15m') as any },
+      secret: process.env['JWT_ACCESS_SECRET'],
+      signOptions: {
+        expiresIn: (process.env['JWT_ACCESS_TTL'] ?? '15m') as any,
+      },
     }),
     PasswordModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
-  exports: [PassportModule, JwtModule],
+  exports: [AuthService, PassportModule, JwtModule],
 })
 export class AuthModule {}

@@ -56,8 +56,12 @@ or times out.
 
 ## Event reference (Socket.IO, `/chat` namespace)
 
-Auth: pass the access token via `socket.handshake.auth.token` (or, as a
-fallback, a `token` query-string parameter) when connecting. The same
+Auth: first call `POST /auth/socket-ticket` through the frontend's
+same-origin BFF. It uses the HttpOnly session server-side and returns an
+ephemeral ticket. Pass it only as `socket.handshake.auth.ticket` when
+connecting — never in a query string. Each ticket expires after 60 seconds
+(configurable) and can be consumed only once, so reconnects must request a
+fresh ticket. The access JWT never enters browser JavaScript. The same
 `isBanned`/`isActive` checks used by REST's `JwtAuthGuard` apply here too, via
 `WsJwtGuard`.
 
