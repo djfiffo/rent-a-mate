@@ -29,7 +29,9 @@ describe('NotificationsController', () => {
     });
     expect(service.findMine).toHaveBeenCalledWith(7, false);
 
-    await expect(controller.list(user, { unreadOnly: true })).resolves.toMatchObject({
+    await expect(
+      controller.list(user, { unreadOnly: true }),
+    ).resolves.toMatchObject({
       data: { notifications: [notification] },
     });
     expect(service.findMine).toHaveBeenCalledWith(7, true);
@@ -51,7 +53,9 @@ describe('NotificationsController', () => {
     const service = { findMine: vi.fn() };
     const controller = new NotificationsController(service as never);
 
-    await expect(controller.list(undefined, {})).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.list(undefined, {})).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
     expect(service.findMine).not.toHaveBeenCalled();
   });
 });

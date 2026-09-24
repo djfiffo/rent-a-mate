@@ -8,7 +8,8 @@ import type { AuthUser } from '../shared/types/auth-user.js';
  * etc.) are caught in `ChatGateway` and mapped to `{ ok: false, error }` via
  * `ackError()` rather than crashing the socket connection.
  */
-export type ChatAck<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
+export type ChatAck<T = undefined> =
+  { ok: true; data?: T } | { ok: false; error: string };
 
 export function ackOk<T>(data?: T): ChatAck<T> {
   return { ok: true, data };

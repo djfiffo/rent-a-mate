@@ -18,7 +18,8 @@ export class StripeProvider {
     }
 
     this.client = new Stripe(secretKey, {
-      apiVersion: (process.env['STRIPE_API_VERSION'] ?? '2026-08-26.dahlia') as Stripe.LatestApiVersion,
+      apiVersion: (process.env['STRIPE_API_VERSION'] ??
+        '2026-08-26.dahlia') as Stripe.LatestApiVersion,
     });
   }
 

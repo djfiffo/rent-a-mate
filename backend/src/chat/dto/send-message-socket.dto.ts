@@ -9,7 +9,9 @@ export class SendMessageSocketDto {
   @Min(1)
   bookingId!: number;
 
-  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @MinLength(1)
   @MaxLength(2000)

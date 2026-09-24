@@ -29,6 +29,8 @@ describe('readMinioConfig', () => {
   });
 
   it('rejects partial configuration', () => {
-    expect(() => readMinioConfig({ MINIO_ENDPOINT: 'localhost' })).toThrow(/Incomplete MinIO configuration/);
+    expect(() => readMinioConfig({ MINIO_ENDPOINT: 'localhost' })).toThrow(
+      /Incomplete MinIO configuration/,
+    );
   });
 });

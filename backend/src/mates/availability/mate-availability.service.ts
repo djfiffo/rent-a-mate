@@ -40,18 +40,12 @@ export class MateAvailabilityService {
 
     this.validateTimeRange(input.startTime, input.endTime);
 
-    const existing = await this.database.orm.public.MateAvailability
-      .where({
-        mateId: mate.id,
-        dayOfWeek: input.dayOfWeek,
-      })
-      .all();
+    const existing = await this.database.orm.public.MateAvailability.where({
+      mateId: mate.id,
+      dayOfWeek: input.dayOfWeek,
+    }).all();
 
-    this.ensureNoOverlap(
-      existing,
-      input.startTime,
-      input.endTime,
-    );
+    this.ensureNoOverlap(existing, input.startTime, input.endTime);
 
     return this.database.orm.public.MateAvailability.create({
       mateId: mate.id,
@@ -61,14 +55,12 @@ export class MateAvailabilityService {
     });
   }
 
-  async findMine(
-    userId: number,
-  ): Promise<MateAvailabilityRecord[]> {
+  async findMine(userId: number): Promise<MateAvailabilityRecord[]> {
     const mate = await this.requireMate(userId);
 
-    const availability = await this.database.orm.public.MateAvailability
-      .where({ mateId: mate.id })
-      .all();
+    const availability = await this.database.orm.public.MateAvailability.where({
+      mateId: mate.id,
+    }).all();
 
     return availability.sort((a, b) => {
       if (a.dayOfWeek !== b.dayOfWeek) {
@@ -96,12 +88,10 @@ export class MateAvailabilityService {
       );
     }
 
-    const current = await this.database.orm.public.MateAvailability
-      .where({
-        id: availabilityId,
-        mateId: mate.id,
-      })
-      .first();
+    const current = await this.database.orm.public.MateAvailability.where({
+      id: availabilityId,
+      mateId: mate.id,
+    }).first();
 
     if (!current) {
       throw new NotFoundException('Availability not found');
@@ -113,30 +103,21 @@ export class MateAvailabilityService {
 
     this.validateTimeRange(startTime, endTime);
 
-    const existing = await this.database.orm.public.MateAvailability
-      .where({
-        mateId: mate.id,
-        dayOfWeek,
-      })
-      .all();
+    const existing = await this.database.orm.public.MateAvailability.where({
+      mateId: mate.id,
+      dayOfWeek,
+    }).all();
 
-    this.ensureNoOverlap(
-      existing,
+    this.ensureNoOverlap(existing, startTime, endTime, current.id);
+
+    const updated = await this.database.orm.public.MateAvailability.where({
+      id: current.id,
+      mateId: mate.id,
+    }).update({
+      dayOfWeek,
       startTime,
       endTime,
-      current.id,
-    );
-
-    const updated = await this.database.orm.public.MateAvailability
-      .where({
-        id: current.id,
-        mateId: mate.id,
-      })
-      .update({
-        dayOfWeek,
-        startTime,
-        endTime,
-      });
+    });
 
     if (!updated) {
       throw new NotFoundException('Availability not found');
@@ -145,29 +126,22 @@ export class MateAvailabilityService {
     return updated;
   }
 
-  async remove(
-    userId: number,
-    availabilityId: number,
-  ): Promise<void> {
+  async remove(userId: number, availabilityId: number): Promise<void> {
     const mate = await this.requireActiveMate(userId);
 
-    const current = await this.database.orm.public.MateAvailability
-      .where({
-        id: availabilityId,
-        mateId: mate.id,
-      })
-      .first();
+    const current = await this.database.orm.public.MateAvailability.where({
+      id: availabilityId,
+      mateId: mate.id,
+    }).first();
 
     if (!current) {
       throw new NotFoundException('Availability not found');
     }
 
-    await this.database.orm.public.MateAvailability
-      .where({
-        id: current.id,
-        mateId: mate.id,
-      })
-      .delete();
+    await this.database.orm.public.MateAvailability.where({
+      id: current.id,
+      mateId: mate.id,
+    }).delete();
   }
 
   async isWithinAvailability(
@@ -180,12 +154,10 @@ export class MateAvailabilityService {
 
     const dayOfWeek = date.dayOfWeek;
 
-    const availability = await this.database.orm.public.MateAvailability
-      .where({
-        mateId,
-        dayOfWeek,
-      })
-      .all();
+    const availability = await this.database.orm.public.MateAvailability.where({
+      mateId,
+      dayOfWeek,
+    }).all();
 
     const requestedStart = this.timeToMinutes(startTime);
     const requestedEnd = this.timeToMinutes(endTime);
@@ -194,10 +166,7 @@ export class MateAvailabilityService {
       const slotStart = this.timeToMinutes(slot.startTime);
       const slotEnd = this.timeToMinutes(slot.endTime);
 
-      return (
-        requestedStart >= slotStart &&
-        requestedEnd <= slotEnd
-      );
+      return requestedStart >= slotStart && requestedEnd <= slotEnd;
     });
   }
 
@@ -206,20 +175,25 @@ export class MateAvailabilityService {
     userId: number,
     input: ReplaceMateAvailabilityDto | CreateMateAvailabilityDto[],
   ): Promise<MateAvailabilityRecord[]> {
-    if (!Array.isArray(input) && !Array.isArray(input.slots) && !Array.isArray(input.availability) && !Array.isArray(input.windows)) {
+    if (
+      !Array.isArray(input) &&
+      !Array.isArray(input.slots) &&
+      !Array.isArray(input.availability) &&
+      !Array.isArray(input.windows)
+    ) {
       throw new BadRequestException('Availability slots are required');
     }
     const windows = Array.isArray(input)
       ? input
-      : input.slots ?? input.availability ?? input.windows ?? [];
+      : (input.slots ?? input.availability ?? input.windows ?? []);
 
     this.validateSchedule(windows);
 
     await this.database.transaction(async (transaction) => {
       const mate = await this.requireActiveMate(userId, transaction);
-      await transaction.orm.public.MateAvailability
-        .where({ mateId: mate.id })
-        .deleteAndCount();
+      await transaction.orm.public.MateAvailability.where({
+        mateId: mate.id,
+      }).deleteAndCount();
 
       for (const window of windows) {
         await transaction.orm.public.MateAvailability.create({
@@ -239,37 +213,57 @@ export class MateAvailabilityService {
    * booking is blocking only while pending or confirmed; subtraction is done
    * in minutes so a booking can split a weekly window into two results.
    */
-  async getPublicAvailability(mateId: number, dateValue: string): Promise<MateOpenInterval[]> {
+  async getPublicAvailability(
+    mateId: number,
+    dateValue: string,
+  ): Promise<MateOpenInterval[]> {
     const date = this.parseDate(dateValue);
     await requirePublicMate(this.database, mateId);
 
     const [weekly, bookings] = await Promise.all([
-      this.database.orm.public.MateAvailability.where({ mateId, dayOfWeek: date.dayOfWeek }).all(),
+      this.database.orm.public.MateAvailability.where({
+        mateId,
+        dayOfWeek: date.dayOfWeek,
+      }).all(),
       this.database.orm.public.Booking.where({
         mateId,
-        date: date.toZonedDateTime({ timeZone: TIMEZONE, plainTime: '00:00' }).toInstant(),
+        date: date
+          .toZonedDateTime({ timeZone: TIMEZONE, plainTime: '00:00' })
+          .toInstant(),
       }).all(),
     ]);
 
     const blocking = bookings
-      .filter((booking) => (booking.status === 'pending' || booking.status === 'confirmed') && this.bookingMatchesDate(booking, date))
+      .filter(
+        (booking) =>
+          (booking.status === 'pending' || booking.status === 'confirmed') &&
+          this.bookingMatchesDate(booking, date),
+      )
       .map((booking) => this.bookingInterval(booking, date))
       .filter((interval): interval is [number, number] => interval !== null);
 
     return weekly
-      .sort((left, right) => this.timeToMinutes(left.startTime) - this.timeToMinutes(right.startTime))
+      .sort(
+        (left, right) =>
+          this.timeToMinutes(left.startTime) -
+          this.timeToMinutes(right.startTime),
+      )
       .flatMap((window) => this.subtractIntervals(window, blocking));
   }
 
   // Alias kept for callers that use the discovery terminology.
-  async findForDate(mateId: number, dateValue: string): Promise<MateOpenInterval[]> {
+  async findForDate(
+    mateId: number,
+    dateValue: string,
+  ): Promise<MateOpenInterval[]> {
     return this.getPublicAvailability(mateId, dateValue);
   }
 
-  private async requireMate(userId: number, source: MateDatabase = this.database) {
-    const mate = await source.orm.public.Mate
-      .where({ userId })
-      .first();
+  private async requireMate(
+    userId: number,
+    source: MateDatabase = this.database,
+  ) {
+    const mate = await source.orm.public.Mate.where({ userId }).first();
 
     if (!mate) {
       throw new NotFoundException('Mate profile not found');
@@ -278,26 +272,28 @@ export class MateAvailabilityService {
     return mate;
   }
 
-  private async requireActiveMate(userId: number, source: MateDatabase = this.database) {
+  private async requireActiveMate(
+    userId: number,
+    source: MateDatabase = this.database,
+  ) {
     const mate = await this.requireMate(userId, source);
-    if (mate.isActive === false) throw new UnprocessableEntityException('Mate profile is not active');
+    if (mate.isActive === false)
+      throw new UnprocessableEntityException('Mate profile is not active');
     return mate;
   }
 
-  private validateTimeRange(
-    startTime: string,
-    endTime: string,
-  ): void {
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime)) {
+  private validateTimeRange(startTime: string, endTime: string): void {
+    if (
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime) ||
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime)
+    ) {
       throw new BadRequestException('Time values must use HH:mm format');
     }
     const start = this.timeToMinutes(startTime);
     const end = this.timeToMinutes(endTime);
 
     if (start >= end) {
-      throw new BadRequestException(
-        'Start time must be before end time',
-      );
+      throw new BadRequestException('Start time must be before end time');
     }
   }
 
@@ -318,10 +314,7 @@ export class MateAvailabilityService {
       const existingStart = this.timeToMinutes(slot.startTime);
       const existingEnd = this.timeToMinutes(slot.endTime);
 
-      return (
-        existingStart < newEnd &&
-        existingEnd > newStart
-      );
+      return existingStart < newEnd && existingEnd > newStart;
     });
 
     if (overlaps) {
@@ -367,13 +360,17 @@ export class MateAvailabilityService {
     return date;
   }
 
-  private bookingMatchesDate(booking: MateQueryRecord, date: Temporal.PlainDate): boolean {
+  private bookingMatchesDate(
+    booking: MateQueryRecord,
+    date: Temporal.PlainDate,
+  ): boolean {
     const raw = booking.date;
     if (raw && typeof raw === 'object' && 'toString' in raw) {
       const value = String(raw);
       if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value === date.toString();
     }
-    if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw === date.toString();
+    if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw))
+      return raw === date.toString();
     const millis = this.epochMilliseconds(raw);
     if (millis === null) return false;
     return Temporal.Instant.fromEpochMilliseconds(millis)
@@ -382,32 +379,50 @@ export class MateAvailabilityService {
       .equals(date);
   }
 
-  private bookingInterval(booking: MateQueryRecord, date: Temporal.PlainDate): [number, number] | null {
+  private bookingInterval(
+    booking: MateQueryRecord,
+    date: Temporal.PlainDate,
+  ): [number, number] | null {
     const start = this.timeValueToMinutes(booking.startTime, date);
     const end = this.timeValueToMinutes(booking.endTime, date);
     if (start === null || end === null || start >= end) return null;
     return [start, end];
   }
 
-  private timeValueToMinutes(value: unknown, date: Temporal.PlainDate): number | null {
+  private timeValueToMinutes(
+    value: unknown,
+    date: Temporal.PlainDate,
+  ): number | null {
     if (typeof value === 'string' && /^\d{2}:\d{2}/.test(value)) {
       return this.timeToMinutes(value.slice(0, 5));
     }
-    if (value && typeof value === 'object' && 'hour' in value && 'minute' in value) {
+    if (
+      value &&
+      typeof value === 'object' &&
+      'hour' in value &&
+      'minute' in value
+    ) {
       const time = value as { hour: number; minute: number };
       return time.hour * 60 + time.minute;
     }
     const millis = this.epochMilliseconds(value);
     if (millis === null) return null;
-    const local = Temporal.Instant.fromEpochMilliseconds(millis).toZonedDateTimeISO(TIMEZONE);
-    return local.toPlainDate().equals(date) ? local.hour * 60 + local.minute : null;
+    const local =
+      Temporal.Instant.fromEpochMilliseconds(millis).toZonedDateTimeISO(
+        TIMEZONE,
+      );
+    return local.toPlainDate().equals(date)
+      ? local.hour * 60 + local.minute
+      : null;
   }
 
   private epochMilliseconds(value: unknown): number | null {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     if (value instanceof Date) return value.getTime();
     if (value && typeof value === 'object' && 'epochMilliseconds' in value) {
-      const millis = Number((value as { epochMilliseconds: unknown }).epochMilliseconds);
+      const millis = Number(
+        (value as { epochMilliseconds: unknown }).epochMilliseconds,
+      );
       return Number.isFinite(millis) ? millis : null;
     }
     if (typeof value === 'string') {
@@ -427,7 +442,10 @@ export class MateAvailabilityService {
     const open: MateOpenInterval[] = [];
 
     for (const [bookingStart, bookingEnd] of bookings
-      .filter(([bookingStart, bookingEnd]) => bookingStart < end && bookingEnd > start)
+      .filter(
+        ([bookingStart, bookingEnd]) =>
+          bookingStart < end && bookingEnd > start,
+      )
       .sort((left, right) => left[0] - right[0])) {
       const clippedStart = Math.max(start, bookingStart);
       const clippedEnd = Math.min(end, bookingEnd);
@@ -441,7 +459,10 @@ export class MateAvailabilityService {
   }
 
   private interval(start: number, end: number): MateOpenInterval {
-    return { startTime: this.minutesToTime(start), endTime: this.minutesToTime(end) };
+    return {
+      startTime: this.minutesToTime(start),
+      endTime: this.minutesToTime(end),
+    };
   }
 
   private minutesToTime(minutes: number): string {

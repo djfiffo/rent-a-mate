@@ -1,4 +1,9 @@
-import { Logger, UnauthorizedException, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Logger,
+  UnauthorizedException,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -27,7 +32,11 @@ import {
 } from './chat.types.js';
 import { WsJwtGuard } from './ws-jwt.guard.js';
 
-const VALIDATION_PIPE = new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true });
+const VALIDATION_PIPE = new ValidationPipe({
+  transform: true,
+  whitelist: true,
+  forbidNonWhitelisted: true,
+});
 
 /**
  * Optional real-time transport for booking chat (spec 6.7, deferred/optional
@@ -44,7 +53,10 @@ const VALIDATION_PIPE = new ValidationPipe({ transform: true, whitelist: true, f
   namespace: '/chat',
   cors: {
     origin: process.env['CORS_ORIGIN']
-      ? process.env['CORS_ORIGIN'].split(',').map((origin) => origin.trim()).filter(Boolean)
+      ? process.env['CORS_ORIGIN']
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean)
       : false,
   },
 })
@@ -64,7 +76,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const user = await this.wsJwtGuard.authenticate(client);
       (client.data as ChatSocketData).user = user;
     } catch (error) {
-      this.wsJwtGuard.reject(client, error instanceof Error ? error.message : 'Unauthorized');
+      this.wsJwtGuard.reject(
+        client,
+        error instanceof Error ? error.message : 'Unauthorized',
+      );
     }
   }
 
@@ -75,7 +90,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /** Authorizes and joins `booking:{bookingId}` using the same participant check REST uses. */
   @SubscribeMessage('join_booking')
   @UsePipes(VALIDATION_PIPE)
-  async handleJoinBooking(@ConnectedSocket() client: Socket, @MessageBody() dto: JoinBookingDto): Promise<ChatAck> {
+  async handleJoinBooking(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() dto: JoinBookingDto,
+  ): Promise<ChatAck> {
     try {
       const user = this.requireUser(client);
       await this.messagesService.assertParticipant(user, dto.bookingId);
@@ -88,7 +106,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   /** No authorization check needed: leaving a room a client isn't in is a no-op. */
   @SubscribeMessage('leave_booking')
-  handleLeaveBooking(@ConnectedSocket() client: Socket, @MessageBody() payload: LeaveBookingPayload): ChatAck {
+  handleLeaveBooking(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: LeaveBookingPayload,
+  ): ChatAck {
     client.leave(bookingRoom(payload.bookingId));
     return ackOk();
   }
@@ -108,7 +129,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<ChatAck<NewMessageBroadcast>> {
     try {
       const user = this.requireUser(client);
-      const message = await this.messagesService.create(user, dto.bookingId, { content: dto.content });
+      const message = await this.messagesService.create(user, dto.bookingId, {
+        content: dto.content,
+      });
       this.server.to(bookingRoom(dto.bookingId)).emit('new_message', message);
       return ackOk(message);
     } catch (error) {
@@ -119,11 +142,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /** Transient (not persisted): broadcast to everyone else in the room, never back to the sender. */
   @SubscribeMessage('typing')
   @UsePipes(VALIDATION_PIPE)
-  async handleTyping(@ConnectedSocket() client: Socket, @MessageBody() dto: TypingDto): Promise<ChatAck> {
+  async handleTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() dto: TypingDto,
+  ): Promise<ChatAck> {
     try {
       const user = this.requireUser(client);
       await this.messagesService.assertParticipant(user, dto.bookingId);
-      const broadcast: TypingBroadcast = { bookingId: dto.bookingId, userId: user.id, isTyping: dto.isTyping };
+      const broadcast: TypingBroadcast = {
+        bookingId: dto.bookingId,
+        userId: user.id,
+        isTyping: dto.isTyping,
+      };
       client.to(bookingRoom(dto.bookingId)).emit('typing', broadcast);
       return ackOk();
     } catch (error) {
@@ -140,9 +170,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<ChatAck<{ updatedCount: number }>> {
     try {
       const user = this.requireUser(client);
-      const { updatedCount } = await this.messagesService.markRead(user, dto.bookingId);
-      const broadcast: MessagesReadBroadcast = { bookingId: dto.bookingId, readerId: user.id, updatedCount };
-      this.server.to(bookingRoom(dto.bookingId)).emit('messages_read', broadcast);
+      const { updatedCount } = await this.messagesService.markRead(
+        user,
+        dto.bookingId,
+      );
+      const broadcast: MessagesReadBroadcast = {
+        bookingId: dto.bookingId,
+        readerId: user.id,
+        updatedCount,
+      };
+      this.server
+        .to(bookingRoom(dto.bookingId))
+        .emit('messages_read', broadcast);
       return ackOk({ updatedCount });
     } catch (error) {
       return ackError(error);

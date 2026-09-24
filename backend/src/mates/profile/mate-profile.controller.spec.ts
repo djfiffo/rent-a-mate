@@ -31,16 +31,24 @@ describe('MateProfileController', () => {
       message: 'Mate profile created',
       data: { mate: profile },
     });
-    await expect(controller.getProfile(user)).resolves.toMatchObject({ data: { mate: profile } });
-    await expect(controller.update(user, {} as never)).resolves.toMatchObject({ data: { mate: profile } });
+    await expect(controller.getProfile(user)).resolves.toMatchObject({
+      data: { mate: profile },
+    });
+    await expect(controller.update(user, {} as never)).resolves.toMatchObject({
+      data: { mate: profile },
+    });
   });
 
   it('rejects missing and non-mate identities before calling the service', async () => {
     const service = { getProfile: vi.fn() };
     const controller = new MateProfileController(service as never);
 
-    await expect(controller.getProfile(undefined)).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(controller.getProfile({ id: 7, role: 'renter' })).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.getProfile(undefined)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    await expect(
+      controller.getProfile({ id: 7, role: 'renter' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
     expect(service.getProfile).not.toHaveBeenCalled();
   });
 });

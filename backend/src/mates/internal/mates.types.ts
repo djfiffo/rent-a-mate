@@ -83,7 +83,9 @@ interface MateOrm {
 }
 
 export interface MateDatabase {
-  transaction<T>(callback: (transaction: MateDatabase) => Promise<T>): Promise<T>;
+  transaction<T>(
+    callback: (transaction: MateDatabase) => Promise<T>,
+  ): Promise<T>;
   orm: { public: MateOrm };
 }
 

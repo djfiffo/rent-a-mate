@@ -140,10 +140,10 @@ describe('WsJwtGuard', () => {
       const guard = new WsJwtGuard(jwtService as never);
       const client = createSocket();
 
-      guard.reject(client as never, 'Missing token');
+      guard.reject(client as never, 'Missing socket ticket');
 
       expect(client.emit).toHaveBeenCalledWith('error', {
-        message: 'Missing token',
+        message: 'Missing socket ticket',
       });
       expect(client.disconnect).toHaveBeenCalledWith(true);
     });

@@ -19,7 +19,8 @@ export const unbanUserRecord = (_userId: number): boolean => false;
 /** @deprecated Read moderation state from User. */
 export const isUserBanned = (_userId: number): boolean => false;
 /** @deprecated Ban metadata is persisted on User. */
-export const getBanRecord = (_userId: number): BanRecord | undefined => undefined;
+export const getBanRecord = (_userId: number): BanRecord | undefined =>
+  undefined;
 /** @deprecated Persist moderation changes through AdminService. */
 export const activateUserRecord = (_userId: number): void => undefined;
 /** @deprecated Persist moderation changes through AdminService. */

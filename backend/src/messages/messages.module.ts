@@ -14,7 +14,10 @@ import { MESSAGES_DATABASE_TOKEN } from './messages.tokens.js';
 @Module({
   imports: [AuthModule, NotificationsModule],
   controllers: [MessagesController],
-  providers: [MessagesService, { provide: MESSAGES_DATABASE_TOKEN, useValue: db }],
+  providers: [
+    MessagesService,
+    { provide: MESSAGES_DATABASE_TOKEN, useValue: db },
+  ],
   exports: [MessagesService],
 })
 export class MessagesModule {}

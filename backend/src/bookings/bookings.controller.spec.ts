@@ -21,18 +21,29 @@ describe('BookingsController', () => {
 
   it('wraps create() in the success envelope', async () => {
     const service = {
-      create: vi.fn().mockResolvedValue({ id: 1, status: 'pending', totalPrice: '400.00' }),
+      create: vi
+        .fn()
+        .mockResolvedValue({ id: 1, status: 'pending', totalPrice: '400.00' }),
     };
     const controller = new BookingsController(service as never);
 
     await expect(
-      controller.create(user, { mateId: 3, activityId: 2, date: '2026-09-10', startTime: '10:00', endTime: '12:00' }),
+      controller.create(user, {
+        mateId: 3,
+        activityId: 2,
+        date: '2026-09-10',
+        startTime: '10:00',
+        endTime: '12:00',
+      }),
     ).resolves.toEqual({
       status: 'success',
       message: 'Booking request sent',
       data: { id: 1, status: 'pending', totalPrice: '400.00' },
     });
-    expect(service.create).toHaveBeenCalledWith(7, expect.objectContaining({ mateId: 3 }));
+    expect(service.create).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ mateId: 3 }),
+    );
   });
 
   it('rejects create() for an unauthenticated caller before calling the service', async () => {
@@ -40,13 +51,22 @@ describe('BookingsController', () => {
     const controller = new BookingsController(service as never);
 
     await expect(
-      controller.create(undefined, { mateId: 3, activityId: 2, date: '2026-09-10', startTime: '10:00', endTime: '12:00' }),
+      controller.create(undefined, {
+        mateId: 3,
+        activityId: 2,
+        date: '2026-09-10',
+        startTime: '10:00',
+        endTime: '12:00',
+      }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(service.create).not.toHaveBeenCalled();
   });
 
   it('wraps findMine() in the success envelope', async () => {
-    const paginated = { items: [booking], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
+    const paginated = {
+      items: [booking],
+      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    };
     const service = { findMine: vi.fn().mockResolvedValue(paginated) };
     const controller = new BookingsController(service as never);
 

@@ -73,30 +73,50 @@ export async function seedTestDatabase(): Promise<TestData> {
   });
 
   // Query activities from seeded data
-  const activity1 = await db.orm.public.Activity.where({ name: 'เดินเล่น' }).first();
+  const activity1 = await db.orm.public.Activity.where({
+    name: 'เดินเล่น',
+  }).first();
   if (!activity1) {
-    throw new Error('Activity "เดินเล่น" not found in database. Make sure seed.ts has run.');
+    throw new Error(
+      'Activity "เดินเล่น" not found in database. Make sure seed.ts has run.',
+    );
   }
 
-  const activity2 = await db.orm.public.Activity.where({ name: 'ดูหนัง' }).first();
+  const activity2 = await db.orm.public.Activity.where({
+    name: 'ดูหนัง',
+  }).first();
   if (!activity2) {
-    throw new Error('Activity "ดูหนัง" not found in database. Make sure seed.ts has run.');
+    throw new Error(
+      'Activity "ดูหนัง" not found in database. Make sure seed.ts has run.',
+    );
   }
 
-  const interest1 = await db.orm.public.Interest.where({ name: 'ท่องเที่ยว' }).first();
+  const interest1 = await db.orm.public.Interest.where({
+    name: 'ท่องเที่ยว',
+  }).first();
   if (!interest1) {
-    throw new Error('Interest "ท่องเที่ยว" not found in database. Make sure seed.ts has run.');
+    throw new Error(
+      'Interest "ท่องเที่ยว" not found in database. Make sure seed.ts has run.',
+    );
   }
 
   // Get first province and district for testing
-  const province = await db.orm.public.Province.where((p) => p.id.gt(0)).first();
+  const province = await db.orm.public.Province.where((p) =>
+    p.id.gt(0),
+  ).first();
   if (!province) {
-    throw new Error('No provinces found in database. Make sure seed.ts has run.');
+    throw new Error(
+      'No provinces found in database. Make sure seed.ts has run.',
+    );
   }
 
-  const district = await db.orm.public.District.where({ provinceId: province.id }).first();
+  const district = await db.orm.public.District.where({
+    provinceId: province.id,
+  }).first();
   if (!district) {
-    throw new Error(`No districts found for province ${province.id}. Make sure seed.ts has run.`);
+    throw new Error(
+      `No districts found for province ${province.id}. Make sure seed.ts has run.`,
+    );
   }
 
   // Create mate profiles
@@ -188,7 +208,9 @@ export async function cleanupTestDatabase(): Promise<void> {
   // Children must be deleted before their parents to satisfy FK constraints:
   // RefreshToken/Notification/Booking -> User, Payment/Review -> Booking,
   // MateActivity/MateInterest/MateAvailability -> Mate.
-  await db.orm.public.RefreshToken.where((rt) => rt.userId.gt(0)).deleteAndCount();
+  await db.orm.public.RefreshToken.where((rt) =>
+    rt.userId.gt(0),
+  ).deleteAndCount();
   for (const event of await db.orm.public.StripeWebhookEvent.all()) {
     await db.orm.public.StripeWebhookEvent.where({ id: event.id }).delete();
   }
@@ -227,7 +249,9 @@ export function getFutureDate(daysFromNow: number = 1): string {
  * Helper to verify notification was sent to a user.
  * Call after an action (booking create, accept, etc).
  */
-export async function getNotificationsForUser(userId: number): Promise<NotificationRecord[]> {
+export async function getNotificationsForUser(
+  userId: number,
+): Promise<NotificationRecord[]> {
   const notifications = await db.orm.public.Notification.where({
     userId,
   }).all();

@@ -15,7 +15,10 @@ describe('MessagesController', () => {
   const user = { id: 7, role: 'renter' as const };
 
   it('wraps list() in the success envelope', async () => {
-    const paginated = { items: [message], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
+    const paginated = {
+      items: [message],
+      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    };
     const service = { list: vi.fn().mockResolvedValue(paginated) };
     const controller = new MessagesController(service as never);
 
@@ -31,7 +34,9 @@ describe('MessagesController', () => {
     const service = { list: vi.fn() };
     const controller = new MessagesController(service as never);
 
-    await expect(controller.list(undefined, 2, {})).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(controller.list(undefined, 2, {})).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
     expect(service.list).not.toHaveBeenCalled();
   });
 
@@ -39,7 +44,9 @@ describe('MessagesController', () => {
     const service = { create: vi.fn().mockResolvedValue(message) };
     const controller = new MessagesController(service as never);
 
-    await expect(controller.create(user, 2, { content: 'Hello' })).resolves.toEqual({
+    await expect(
+      controller.create(user, 2, { content: 'Hello' }),
+    ).resolves.toEqual({
       status: 'success',
       message: 'Message sent',
       data: message,
@@ -51,9 +58,9 @@ describe('MessagesController', () => {
     const service = { create: vi.fn() };
     const controller = new MessagesController(service as never);
 
-    await expect(controller.create(undefined, 2, { content: 'Hello' })).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      controller.create(undefined, 2, { content: 'Hello' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(service.create).not.toHaveBeenCalled();
   });
 });

@@ -14,7 +14,9 @@ describe('AuthController', () => {
     };
     const controller = new AuthController(service as never);
 
-    await expect(controller.logout({ refreshToken: 'refresh-token' })).resolves.toEqual({
+    await expect(
+      controller.logout({ refreshToken: 'refresh-token' }),
+    ).resolves.toEqual({
       status: 'success',
       message: 'Logged out',
       data: null,
@@ -23,15 +25,19 @@ describe('AuthController', () => {
   });
 
   it('does not require JwtAuthGuard for logout', () => {
-    const guards = Reflect.getMetadata('__guards__', AuthController.prototype.logout);
+    const guards = Reflect.getMetadata(
+      '__guards__',
+      AuthController.prototype.logout,
+    );
 
     expect(guards).toBeUndefined();
   });
 
   it('keeps JwtAuthGuard on /auth/me', () => {
-    const guards = Reflect.getMetadata('__guards__', AuthController.prototype.me) as Array<
-      new (...args: never[]) => unknown
-    >;
+    const guards = Reflect.getMetadata(
+      '__guards__',
+      AuthController.prototype.me,
+    ) as Array<new (...args: never[]) => unknown>;
 
     expect(guards).toContain(JwtAuthGuard);
   });

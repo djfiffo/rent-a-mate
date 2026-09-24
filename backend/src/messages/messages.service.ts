@@ -47,13 +47,20 @@ export class MessagesService {
    * authorize `join_booking`/`leave_booking`/`mark_read` events with the
    * exact same rule REST uses, per spec 6.7.
    */
-  async assertParticipant(user: AuthUser, bookingId: number): Promise<MessageParticipants> {
-    const booking = await this.database.orm.public.Booking.where({ id: bookingId }).first();
+  async assertParticipant(
+    user: AuthUser,
+    bookingId: number,
+  ): Promise<MessageParticipants> {
+    const booking = await this.database.orm.public.Booking.where({
+      id: bookingId,
+    }).first();
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
 
-    const mate = await this.database.orm.public.Mate.where({ id: booking.mateId }).first();
+    const mate = await this.database.orm.public.Mate.where({
+      id: booking.mateId,
+    }).first();
     if (!mate) {
       throw new NotFoundException('Mate not found');
     }
@@ -82,14 +89,22 @@ export class MessagesService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
-    const all = await this.database.orm.public.Message.where({ bookingId }).all();
-    const sorted = [...all].sort((a, b) => this.toEpochMillis(a.createdAt) - this.toEpochMillis(b.createdAt));
+    const all = await this.database.orm.public.Message.where({
+      bookingId,
+    }).all();
+    const sorted = [...all].sort(
+      (a, b) =>
+        this.toEpochMillis(a.createdAt) - this.toEpochMillis(b.createdAt),
+    );
 
     const total = sorted.length;
     const offset = (page - 1) * limit;
     const items = sorted.slice(offset, offset + limit);
 
-    return { items, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return {
+      items,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   /**
@@ -107,7 +122,10 @@ export class MessagesService {
     bookingId: number,
     dto: CreateMessageDto,
   ): Promise<CreateMessageResult> {
-    const { booking, recipientId } = await this.assertParticipant(user, bookingId);
+    const { booking, recipientId } = await this.assertParticipant(
+      user,
+      bookingId,
+    );
 
     if (booking.status !== 'confirmed' && booking.status !== 'completed') {
       throw new UnprocessableEntityException('MESSAGE_NOT_ALLOWED');
@@ -149,9 +167,13 @@ export class MessagesService {
    * only reachable via the future Socket.IO `mark_read` event (no REST
    * mark-read endpoint exists for messages).
    */
-  async markRead(user: AuthUser, bookingId: number): Promise<{ updatedCount: number }> {
+  async markRead(
+    user: AuthUser,
+    bookingId: number,
+  ): Promise<{ updatedCount: number }> {
     const { booking, mate } = await this.assertParticipant(user, bookingId);
-    const otherParticipantId = booking.renterId === user.id ? mate.userId : booking.renterId;
+    const otherParticipantId =
+      booking.renterId === user.id ? mate.userId : booking.renterId;
 
     const updatedCount = await this.database.orm.public.Message.where({
       bookingId,

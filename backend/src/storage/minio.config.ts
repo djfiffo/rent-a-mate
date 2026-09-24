@@ -22,22 +22,27 @@ const REQUIRED_KEYS = [
  * Return null when MinIO is not configured so unit/e2e environments can keep
  * using the in-process provider. Partial configuration is always rejected.
  */
-export function readMinioConfig(env: NodeJS.ProcessEnv = process.env): MinioStorageConfig | null {
-  const values = Object.fromEntries(REQUIRED_KEYS.map((key) => [key, env[key]?.trim()])) as Record<
-    (typeof REQUIRED_KEYS)[number],
-    string | undefined
-  >;
+export function readMinioConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): MinioStorageConfig | null {
+  const values = Object.fromEntries(
+    REQUIRED_KEYS.map((key) => [key, env[key]?.trim()]),
+  ) as Record<(typeof REQUIRED_KEYS)[number], string | undefined>;
   const configured = REQUIRED_KEYS.some((key) => values[key]);
   if (!configured) {
     if (env['NODE_ENV'] === 'production') {
-      throw new Error('MinIO storage is required in production; configure all MINIO_* variables');
+      throw new Error(
+        'MinIO storage is required in production; configure all MINIO_* variables',
+      );
     }
     return null;
   }
 
   const missing = REQUIRED_KEYS.filter((key) => !values[key]);
   if (missing.length > 0) {
-    throw new Error(`Incomplete MinIO configuration; missing ${missing.join(', ')}`);
+    throw new Error(
+      `Incomplete MinIO configuration; missing ${missing.join(', ')}`,
+    );
   }
 
   const port = Number(values.MINIO_PORT);
@@ -57,7 +62,9 @@ export function readMinioConfig(env: NodeJS.ProcessEnv = process.env): MinioStor
   }
 
   return {
-    endPoint: values.MINIO_ENDPOINT!.replace(/^https?:\/\//, '').replace(/\/$/, ''),
+    endPoint: values
+      .MINIO_ENDPOINT!.replace(/^https?:\/\//, '')
+      .replace(/\/$/, ''),
     port,
     useSSL: values.MINIO_USE_SSL === 'true',
     accessKey: values.MINIO_ACCESS_KEY!,
