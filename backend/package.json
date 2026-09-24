@@ -22,6 +22,7 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "contract:emit": "prisma contract emit",
+    "db:update": "prisma db update",
     "seed": "tsx prisma/seed.ts",
     "verify": "npm run format:check && npm run lint && npm run test && npm run build"
   },
