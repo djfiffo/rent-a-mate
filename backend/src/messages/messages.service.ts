@@ -22,12 +22,9 @@ import { ListMessagesQueryDto } from './dto/list-messages-query.dto.js';
  * Owns all `messages` persistence and the REST HTTP surface
  * (`MessagesController`) for it. Deliberately kept HTTP-agnostic: every
  * public method takes a plain `AuthUser` plus primitive/DTO arguments and
- * returns plain data, never touching `Request`/`Response`. This lets a
- * future Socket.IO gateway (`/chat` namespace, see docs/spec.md 6.7) inject
- * this same service and call `assertParticipant()` for `join_booking` /
- * `mark_read` authorization and `create()` for `send_message`, without
- * duplicating any persistence or authorization logic — the REST controller
- * and the gateway would both be thin callers of this one service.
+ * returns plain data, never touching `Request`/`Response`. The Socket.IO
+ * gateway reuses participant and read-state rules but does not write
+ * messages; POST is the single message-create transport.
  */
 @Injectable()
 export class MessagesService {
@@ -43,7 +40,7 @@ export class MessagesService {
    * booking and a non-participant caller, so a client cannot use this
    * endpoint to probe whether a given booking id exists.
    *
-   * Public so it can be reused as-is by a future Socket.IO gateway to
+   * Public so it can be reused as-is by the Socket.IO gateway to
    * authorize `join_booking`/`leave_booking`/`mark_read` events with the
    * exact same rule REST uses, per spec 6.7.
    */
@@ -110,12 +107,8 @@ export class MessagesService {
   /**
    * Persists a message and notifies the other participant, atomically.
    *
-   * This is the single write path for `messages`, per spec 6.7 ("The REST
-   * message service is the only code path that writes `messages`; the
-   * gateway never duplicates persistence logic."). A future `send_message`
-   * Socket.IO handler should call this same method and broadcast its
-   * result to the `booking:{bookingId}` room instead of re-implementing
-   * any of the checks or writes below.
+   * This is the single write path for `messages`. The REST controller calls
+   * it once, then publishes the committed result for realtime broadcast.
    */
   async create(
     user: AuthUser,
@@ -164,7 +157,7 @@ export class MessagesService {
    * Never marks the caller's own messages (there is no concept of
    * "read by sender"). `readAt` otherwise stays `null` forever per spec
    * 6.7 — this is the only code path that ever sets it, and today it is
-   * only reachable via the future Socket.IO `mark_read` event (no REST
+   * reachable via the Socket.IO `mark_read` event (no REST
    * mark-read endpoint exists for messages).
    */
   async markRead(

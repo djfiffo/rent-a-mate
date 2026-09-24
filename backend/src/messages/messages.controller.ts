@@ -19,6 +19,7 @@ import type { AuthUser } from '../shared/types/auth-user.js';
 import type { PaginatedResult } from '../shared/types/pagination.js';
 import { CreateMessageDto } from './dto/create-message.dto.js';
 import { ListMessagesQueryDto } from './dto/list-messages-query.dto.js';
+import { MessagesEvents } from './messages.events.js';
 import { MessagesService } from './messages.service.js';
 import type { CreateMessageResult, MessageRecord } from './messages.types.js';
 
@@ -31,7 +32,10 @@ import type { CreateMessageResult, MessageRecord } from './messages.types.js';
 @Controller('bookings/:bookingId/messages')
 @UseGuards(JwtAuthGuard)
 export class MessagesController {
-  constructor(private readonly messagesService: MessagesService) {}
+  constructor(
+    private readonly messagesService: MessagesService,
+    private readonly messagesEvents: MessagesEvents,
+  ) {}
 
   @Get()
   async list(
@@ -52,6 +56,7 @@ export class MessagesController {
   ): Promise<ApiResponse<CreateMessageResult>> {
     const authUser = this.requireUser(user);
     const result = await this.messagesService.create(authUser, bookingId, dto);
+    this.messagesEvents.publishCreated(result);
     return successResponse('Message sent', result);
   }
 

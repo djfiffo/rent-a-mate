@@ -1,5 +1,7 @@
 import {
   Logger,
+  OnModuleDestroy,
+  OnModuleInit,
   UnauthorizedException,
   UsePipes,
   ValidationPipe,
@@ -14,10 +16,11 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
+import type { Subscription } from 'rxjs';
+import { MessagesEvents } from '../messages/messages.events.js';
 import { MessagesService } from '../messages/messages.service.js';
 import { JoinBookingDto } from './dto/join-booking.dto.js';
 import { MarkReadDto } from './dto/mark-read.dto.js';
-import { SendMessageSocketDto } from './dto/send-message-socket.dto.js';
 import { TypingDto } from './dto/typing.dto.js';
 import {
   ackError,
@@ -27,7 +30,6 @@ import {
   type ChatSocketData,
   type LeaveBookingPayload,
   type MessagesReadBroadcast,
-  type NewMessageBroadcast,
   type TypingBroadcast,
 } from './chat.types.js';
 import { WsJwtGuard } from './ws-jwt.guard.js';
@@ -39,11 +41,9 @@ const VALIDATION_PIPE = new ValidationPipe({
 });
 
 /**
- * Optional real-time transport for booking chat (spec 6.7, deferred/optional
- * scope). Every handler below is a thin wrapper: authorization and
- * persistence always go through `MessagesService` — the same service
- * `MessagesController` (REST) uses — so REST and Socket.IO can never
- * disagree about who can read/send a message or what got written.
+ * Optional real-time transport for booking chat. Durable message writes use
+ * REST only. This gateway observes committed writes and broadcasts them, and
+ * handles transient room, typing, and read-receipt events.
  *
  * Auth happens once per connection in `handleConnection` via `WsJwtGuard`,
  * not per message; each handler still fetches `client.data.user` (set there)
@@ -60,8 +60,15 @@ const VALIDATION_PIPE = new ValidationPipe({
       : false,
   },
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway
+  implements
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnModuleInit,
+    OnModuleDestroy
+{
   private readonly logger = new Logger(ChatGateway.name);
+  private messageCreatedSubscription?: Subscription;
 
   @WebSocketServer()
   server!: Server;
@@ -69,7 +76,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly messagesService: MessagesService,
     private readonly wsJwtGuard: WsJwtGuard,
+    private readonly messagesEvents: MessagesEvents,
   ) {}
+
+  onModuleInit(): void {
+    this.messageCreatedSubscription = this.messagesEvents.created$.subscribe(
+      (message) => {
+        this.server
+          .to(bookingRoom(message.bookingId))
+          .emit('new_message', message);
+      },
+    );
+  }
+
+  onModuleDestroy(): void {
+    this.messageCreatedSubscription?.unsubscribe();
+  }
 
   async handleConnection(client: Socket): Promise<void> {
     try {
@@ -112,31 +134,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): ChatAck {
     client.leave(bookingRoom(payload.bookingId));
     return ackOk();
-  }
-
-  /**
-   * The only write path: delegates straight to `MessagesService.create()`
-   * (identical to what `MessagesController.create()` calls for REST), then
-   * broadcasts the result to the whole room, including the sender, so every
-   * client renders from the same server-confirmed payload instead of an
-   * optimistic local echo.
-   */
-  @SubscribeMessage('send_message')
-  @UsePipes(VALIDATION_PIPE)
-  async handleSendMessage(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() dto: SendMessageSocketDto,
-  ): Promise<ChatAck<NewMessageBroadcast>> {
-    try {
-      const user = this.requireUser(client);
-      const message = await this.messagesService.create(user, dto.bookingId, {
-        content: dto.content,
-      });
-      this.server.to(bookingRoom(dto.bookingId)).emit('new_message', message);
-      return ackOk(message);
-    } catch (error) {
-      return ackError(error);
-    }
   }
 
   /** Transient (not persisted): broadcast to everyone else in the room, never back to the sender. */

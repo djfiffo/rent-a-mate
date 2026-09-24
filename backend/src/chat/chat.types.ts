@@ -1,4 +1,3 @@
-import type { CreateMessageResult } from '../messages/messages.types.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 
 /**
@@ -37,11 +36,6 @@ export interface LeaveBookingPayload {
   bookingId: number;
 }
 
-export interface SendMessagePayload {
-  bookingId: number;
-  content: string;
-}
-
 export interface TypingPayload {
   bookingId: number;
   isTyping: boolean;
@@ -50,9 +44,6 @@ export interface TypingPayload {
 export interface MarkReadPayload {
   bookingId: number;
 }
-
-/** Broadcast to `booking:{bookingId}` (including the sender) after a successful `send_message`. */
-export type NewMessageBroadcast = CreateMessageResult;
 
 /** Broadcast to everyone else in the room on `typing`. */
 export interface TypingBroadcast {

@@ -138,7 +138,7 @@ describe('Socket.IO booking chat (e2e)', () => {
     });
   });
 
-  it('WS-08/09 persists one message, notifies the recipient, and broadcasts to the room', async () => {
+  it('WS-08/09 broadcasts one REST-persisted message and notification to the room', async () => {
     const booking = await directBooking(data, 'confirmed');
     const renter = await connectValid(app, tokens.renter1.accessToken);
     const mate = await connectValid(app, tokens.mate1.accessToken);
@@ -153,23 +153,22 @@ describe('Socket.IO booking chat (e2e)', () => {
       mate,
       'new_message',
     );
-    const ack = await emitAck(renter, 'send_message', {
+    const created = await postMessage(
+      app,
+      tokens.renter1.accessToken,
+      booking.id,
+      '  Hello mate  ',
+    );
+    expect(created).toMatchObject({
       bookingId: booking.id,
-      content: '  Hello mate  ',
-    });
-    expect(ack).toMatchObject({
-      ok: true,
-      data: {
-        bookingId: booking.id,
-        senderId: data.renter1.id,
-        content: 'Hello mate',
-      },
+      senderId: data.renter1.id,
+      content: 'Hello mate',
     });
     expect(await renterBroadcast).toMatchObject({
-      id: (ack as { data: { id: number } }).data.id,
+      id: created.id,
     });
     expect(await mateBroadcast).toMatchObject({
-      id: (ack as { data: { id: number } }).data.id,
+      id: created.id,
     });
 
     expect(
@@ -184,25 +183,22 @@ describe('Socket.IO booking chat (e2e)', () => {
     ).toHaveLength(1);
 
     const pending = await directBooking(data, 'pending', 3, '14:00', '15:00');
-    expect(
-      await emitAck(renter, 'send_message', {
-        bookingId: pending.id,
-        content: 'Too early',
-      }),
-    ).toEqual({
-      ok: false,
-      error: 'MESSAGE_NOT_ALLOWED',
-    });
+    await request(app.getHttpServer())
+      .post(`/api/v1/bookings/${pending.id}/messages`)
+      .set('Authorization', `Bearer ${tokens.renter1.accessToken}`)
+      .send({ content: 'Too early' })
+      .expect(422);
   });
 
-  it('WS-10 allows authorized sending without joining while ACK remains the sender delivery path', async () => {
+  it('WS-10 allows REST sending without a socket connection', async () => {
     const booking = await directBooking(data, 'confirmed');
-    const renter = await connectValid(app, tokens.renter1.accessToken);
-    const ack = await emitAck(renter, 'send_message', {
-      bookingId: booking.id,
-      content: 'No room yet',
-    });
-    expect(ack).toMatchObject({ ok: true, data: { content: 'No room yet' } });
+    const created = await postMessage(
+      app,
+      tokens.renter1.accessToken,
+      booking.id,
+      'No room yet',
+    );
+    expect(created).toMatchObject({ content: 'No room yet' });
     expect(
       await db.orm.public.Message.where({ bookingId: booking.id }).all(),
     ).toHaveLength(1);
@@ -291,10 +287,12 @@ describe('Socket.IO booking chat (e2e)', () => {
     renter.once('new_message', () => {
       leaked = true;
     });
-    await emitAck(mate, 'send_message', {
-      bookingId: otherBooking.id,
-      content: 'Other room',
-    });
+    await postMessage(
+      app,
+      tokens.mate1.accessToken,
+      otherBooking.id,
+      'Other room',
+    );
     await delay(50);
     expect(leaked).toBe(false);
   });
@@ -306,6 +304,30 @@ async function login(app: INestApplication<App>, email: string) {
     .send({ email, password: PASSWORD })
     .expect(201);
   return response.body.data as { accessToken: string; refreshToken: string };
+}
+
+async function postMessage(
+  app: INestApplication<App>,
+  accessToken: string,
+  bookingId: number,
+  content: string,
+): Promise<{
+  id: number;
+  bookingId: number;
+  senderId: number;
+  content: string;
+}> {
+  const response = await request(app.getHttpServer())
+    .post(`/api/v1/bookings/${bookingId}/messages`)
+    .set('Authorization', `Bearer ${accessToken}`)
+    .send({ content })
+    .expect(201);
+  return response.body.data as {
+    id: number;
+    bookingId: number;
+    senderId: number;
+    content: string;
+  };
 }
 
 function openSocket(options: {
