@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import Stripe from 'stripe';
 
 /**
@@ -9,15 +9,15 @@ import Stripe from 'stripe';
  */
 @Injectable()
 export class StripeProvider {
-  readonly client: Stripe;
+  private stripeClient?: Stripe;
 
-  constructor() {
+  get client(): Stripe {
     const secretKey = process.env['STRIPE_SECRET_KEY'];
     if (!secretKey) {
-      throw new Error('STRIPE_SECRET_KEY is not configured');
+      throw new ServiceUnavailableException('Payments are not configured');
     }
 
-    this.client = new Stripe(secretKey, {
+    return this.stripeClient ??= new Stripe(secretKey, {
       apiVersion: (process.env['STRIPE_API_VERSION'] ?? '2026-08-26.dahlia') as Stripe.LatestApiVersion,
     });
   }
