@@ -279,8 +279,8 @@ describe('Socket.IO booking chat (e2e)', () => {
       '14:00',
       '15:00',
     );
-    const renter = await connectValid(tokens.renter1.accessToken);
-    const mate = await connectValid(tokens.mate1.accessToken);
+    const renter = await connectValid(app, tokens.renter1.accessToken);
+    const mate = await connectValid(app, tokens.mate1.accessToken);
     await emitAck(renter, 'join_booking', { bookingId: booking.id });
     await emitAck(mate, 'join_booking', { bookingId: otherBooking.id });
     expect(
