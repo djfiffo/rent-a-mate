@@ -37,7 +37,7 @@ services:
       DATABASE_URL: postgresql://matefor:${POSTGRES_PASSWORD}@postgres:5432/matefor
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
-      CORS_ORIGIN: https://test-host.invalid
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
       PORT: 3000
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
