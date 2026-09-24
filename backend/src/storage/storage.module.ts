@@ -7,6 +7,7 @@ import {
   MinioMateStorageProvider,
 } from './minio-mate-storage.provider.js';
 import { readMinioConfig } from './minio.config.js';
+import { MateUploadsController } from './mate-uploads.controller.js';
 
 const minioConfig = readMinioConfig();
 const minioImports = minioConfig
@@ -25,6 +26,7 @@ const minioImports = minioConfig
 
 @Module({
   imports: minioImports,
+  controllers: minioConfig ? [MateUploadsController] : [],
   providers: minioConfig
     ? [
         { provide: MINIO_STORAGE_CONFIG, useValue: minioConfig },

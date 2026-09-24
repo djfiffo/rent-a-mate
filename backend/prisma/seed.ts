@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { db } from '../src/prisma/db.js';
+import { PasswordHashService } from '../src/shared/security/password/password-hash.service.js';
 
 type ProvinceData = {
   id: number;
@@ -83,6 +84,12 @@ async function main() {
   // Seed Activities
   // -------------------------
   const activities = [
+    'Cafe',
+    'Gaming',
+    'Study',
+    'Gym',
+    'Events',
+    'City walks',
     'เดินเล่น',
     'ดูหนัง',
     'พาเที่ยว',
@@ -130,10 +137,73 @@ async function main() {
   }
   console.log('✅ Interests seeded');
 
+  const demoPassword = process.env['DEMO_ACCOUNT_PASSWORD'];
+  if (demoPassword) {
+    const bangkok = provinces.find((province) => province.provinceNameEn === 'Bangkok');
+    const district = districts.find((item) => item.provinceCode === bangkok?.provinceCode);
+    if (!bangkok || !district) throw new Error('Bangkok demo location is missing');
+
+    const password = await new PasswordHashService().hash(demoPassword);
+    const demos = [
+      {
+        name: 'Nan', email: 'nan.demo@matefor.invalid', bio: 'Coffee, conversation, and the best little places in Bangkok.',
+        rate: 350, image: '/images/figma/nan.png', activities: ['Cafe', 'City walks'],
+      },
+      {
+        name: 'Mew', email: 'mew.demo@matefor.invalid', bio: 'Game nights, study sessions, and good company.',
+        rate: 420, image: '/images/figma/mew.png', activities: ['Gaming', 'Study'],
+      },
+      {
+        name: 'Ploy', email: 'ploy.demo@matefor.invalid', bio: 'Exploring events and staying active around the city.',
+        rate: 390, image: null, activities: ['Gym', 'Events'],
+      },
+    ] as const;
+
+    for (const demo of demos) {
+      let user = await db.orm.public.User.where({ email: demo.email }).first();
+      if (!user) {
+        user = await db.orm.public.User.create({
+          name: demo.name, email: demo.email, password, role: 'mate', isVerified: true,
+        });
+      }
+      let mate = await db.orm.public.Mate.where({ userId: user.id }).first();
+      if (!mate) {
+        mate = await db.orm.public.Mate.create({
+          userId: user.id, age: 25, bio: demo.bio, hourlyRate: String(demo.rate),
+          provinceId: bangkok.provinceCode, districtId: district.districtCode,
+          profileImageUrl: demo.image, isActive: true,
+        });
+      }
+      for (const name of demo.activities) {
+        const activity = await db.orm.public.Activity.where({ name }).first();
+        if (!activity) throw new Error(`Demo activity ${name} is missing`);
+        const link = await db.orm.public.MateActivity.where({ mateId: mate.id, activityId: activity.id }).first();
+        if (!link) await db.orm.public.MateActivity.create({ mateId: mate.id, activityId: activity.id });
+      }
+      if (demo.image) {
+        const photo = await db.orm.public.MatePhoto.where({ mateId: mate.id, sortOrder: 0 }).first();
+        if (!photo) await db.orm.public.MatePhoto.create({ mateId: mate.id, url: demo.image, sortOrder: 0 });
+      }
+      const availability = await db.orm.public.MateAvailability.where({
+        mateId: mate.id, dayOfWeek: 1, startTime: '09:00', endTime: '17:00',
+      }).first();
+      if (!availability) {
+        await db.orm.public.MateAvailability.create({
+          mateId: mate.id, dayOfWeek: 1, startTime: '09:00', endTime: '17:00',
+        });
+      }
+    }
+    console.log('✅ Demo mates seeded');
+  }
+
   console.log('🎉 Database seed completed!');
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   console.error('❌ Seed failed:', error);
-  process.exit(1);
-});
+  process.exitCode = 1;
+} finally {
+  await db.close();
+}
