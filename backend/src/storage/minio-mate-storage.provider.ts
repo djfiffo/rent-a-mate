@@ -33,6 +33,9 @@ export class MinioMateStorageProvider implements MateStorageProvider, OnModuleIn
   }
 
   private publicUrl(storageKey: string): string {
+    if (this.config.publicUrl.startsWith('/')) {
+      return `${this.config.publicUrl}?key=${encodeURIComponent(storageKey)}`;
+    }
     const encodedKey = storageKey.split('/').map((part) => encodeURIComponent(part)).join('/');
     return `${this.config.publicUrl}/${encodedKey}`;
   }

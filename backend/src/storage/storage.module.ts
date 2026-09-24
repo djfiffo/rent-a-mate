@@ -3,6 +3,7 @@ import { NestMinioModule } from 'nestjs-minio';
 import { LocalMateStorageProvider, MATE_STORAGE_TOKEN } from '../mates/mate-storage.js';
 import { MINIO_STORAGE_CONFIG, MinioMateStorageProvider } from './minio-mate-storage.provider.js';
 import { readMinioConfig } from './minio.config.js';
+import { MateUploadsController } from './mate-uploads.controller.js';
 
 const minioConfig = readMinioConfig();
 const minioImports = minioConfig
@@ -21,6 +22,7 @@ const minioImports = minioConfig
 
 @Module({
   imports: minioImports,
+  controllers: minioConfig ? [MateUploadsController] : [],
   providers: minioConfig
     ? [
         { provide: MINIO_STORAGE_CONFIG, useValue: minioConfig },
