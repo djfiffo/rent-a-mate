@@ -3,9 +3,15 @@ import type { db } from '../prisma/db.js';
 export type NotificationClient = typeof db.orm.public.Notification;
 export type NotificationFilter = Parameters<NotificationClient['where']>[0];
 export type NotificationQuery = ReturnType<NotificationClient['where']>;
-export type NotificationRecord = NonNullable<Awaited<ReturnType<NotificationQuery['first']>>>;
-export type NotificationCreateInput = Parameters<NotificationClient['create']>[0];
-export type NotificationUpdateInput = Parameters<NotificationQuery['update']>[0];
+export type NotificationRecord = NonNullable<
+  Awaited<ReturnType<NotificationQuery['first']>>
+>;
+export type NotificationCreateInput = Parameters<
+  NotificationClient['create']
+>[0];
+export type NotificationUpdateInput = Parameters<
+  NotificationQuery['update']
+>[0];
 
 /**
  * Structural database dependency for the Notifications module itself
@@ -15,7 +21,12 @@ export type NotificationDatabase = {
   orm: {
     public: {
       Notification: {
-        where(filters: NotificationFilter): Pick<NotificationQuery, 'first' | 'all' | 'where' | 'update' | 'updateAndCount'>;
+        where(
+          filters: NotificationFilter,
+        ): Pick<
+          NotificationQuery,
+          'first' | 'all' | 'where' | 'update' | 'updateAndCount'
+        >;
         create(data: NotificationCreateInput): Promise<NotificationRecord>;
       };
     };

@@ -40,17 +40,28 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
 
   it('LOOKUP-01/02 exposes sorted public reference data and validates province IDs', async () => {
     for (const path of ['activities', 'interests', 'provinces']) {
-      const response = await request(app.getHttpServer()).get(`/api/v1/${path}`).expect(200);
-      const names = response.body.data.items.map((item: { name: string }) => item.name);
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/${path}`)
+        .expect(200);
+      const names = response.body.data.items.map(
+        (item: { name: string }) => item.name,
+      );
       expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
     }
 
     const districts = await request(app.getHttpServer())
       .get(`/api/v1/provinces/${data.province.id}/districts`)
       .expect(200);
-    expect(districts.body.data.items).toContainEqual({ id: data.district.id, name: data.district.name });
-    await request(app.getHttpServer()).get('/api/v1/provinces/999999/districts').expect(404);
-    await request(app.getHttpServer()).get('/api/v1/provinces/not-an-id/districts').expect(400);
+    expect(districts.body.data.items).toContainEqual({
+      id: data.district.id,
+      name: data.district.name,
+    });
+    await request(app.getHttpServer())
+      .get('/api/v1/provinces/999999/districts')
+      .expect(404);
+    await request(app.getHttpServer())
+      .get('/api/v1/provinces/not-an-id/districts')
+      .expect(400);
   });
 
   it('MATE-01/02/03 creates one profile for a mate and enforces role and uniqueness', async () => {
@@ -62,7 +73,10 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
     const token = await accessToken(app, email);
     const auth = bearer(token);
 
-    await request(app.getHttpServer()).get('/api/v1/mates/me').set(auth).expect(404);
+    await request(app.getHttpServer())
+      .get('/api/v1/mates/me')
+      .set(auth)
+      .expect(404);
     const created = await request(app.getHttpServer())
       .post('/api/v1/mates')
       .set(auth)
@@ -83,10 +97,20 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
       province: { id: data.province.id },
       district: { id: data.district.id },
     });
-    expect(created.body.data.mate.activities).toContainEqual({ id: data.activity1.id, name: data.activity1.name });
-    expect(created.body.data.mate.interests).toContainEqual({ id: data.interest1.id, name: data.interest1.name });
+    expect(created.body.data.mate.activities).toContainEqual({
+      id: data.activity1.id,
+      name: data.activity1.name,
+    });
+    expect(created.body.data.mate.interests).toContainEqual({
+      id: data.interest1.id,
+      name: data.interest1.name,
+    });
 
-    await request(app.getHttpServer()).post('/api/v1/mates').set(auth).send({}).expect(400);
+    await request(app.getHttpServer())
+      .post('/api/v1/mates')
+      .set(auth)
+      .send({})
+      .expect(400);
     await request(app.getHttpServer())
       .post('/api/v1/mates')
       .set(auth)
@@ -117,7 +141,12 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
     const email = 'validation-mate@example.com';
     await request(app.getHttpServer())
       .post('/api/v1/auth/register')
-      .send({ name: 'Validation Mate', email, password: PASSWORD, role: 'mate' })
+      .send({
+        name: 'Validation Mate',
+        email,
+        password: PASSWORD,
+        role: 'mate',
+      })
       .expect(201);
     const auth = bearer(await accessToken(app, email));
     const base = {
@@ -133,9 +162,18 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
       { ...base, age: 121, hourlyRate: 100 },
       { ...base, age: 25, hourlyRate: 0 },
       { ...base, age: 25, hourlyRate: 1.123 },
-      { ...base, age: 25, hourlyRate: 100, activityIds: [data.activity1.id, data.activity1.id] },
+      {
+        ...base,
+        age: 25,
+        hourlyRate: 100,
+        activityIds: [data.activity1.id, data.activity1.id],
+      },
     ]) {
-      await request(app.getHttpServer()).post('/api/v1/mates').set(auth).send(invalid).expect(400);
+      await request(app.getHttpServer())
+        .post('/api/v1/mates')
+        .set(auth)
+        .send(invalid)
+        .expect(400);
     }
 
     await request(app.getHttpServer())
@@ -144,7 +182,9 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
       .send({ ...base, age: 25, hourlyRate: 100, districtId: 999999 })
       .expect(422);
     const user = await db.orm.public.User.where({ email }).first();
-    expect(await db.orm.public.Mate.where({ userId: user!.id }).first()).toBeNull();
+    expect(
+      await db.orm.public.Mate.where({ userId: user!.id }).first(),
+    ).toBeNull();
   });
 
   it('MATE-07/08 updates scalar and relation fields and rejects empty updates', async () => {
@@ -152,7 +192,12 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
     await request(app.getHttpServer())
       .patch('/api/v1/mates/me')
       .set(auth)
-      .send({ bio: ' Updated bio ', hourlyRate: 725.25, activityIds: [], interestIds: [] })
+      .send({
+        bio: ' Updated bio ',
+        hourlyRate: 725.25,
+        activityIds: [],
+        interestIds: [],
+      })
       .expect(200)
       .expect(({ body }) => {
         expect(body.data.mate.bio).toBe('Updated bio');
@@ -160,7 +205,11 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
         expect(body.data.mate.activities).toEqual([]);
         expect(body.data.mate.interests).toEqual([]);
       });
-    await request(app.getHttpServer()).patch('/api/v1/mates/me').set(auth).send({}).expect(400);
+    await request(app.getHttpServer())
+      .patch('/api/v1/mates/me')
+      .set(auth)
+      .send({})
+      .expect(400);
     await request(app.getHttpServer())
       .patch('/api/v1/mates/me')
       .set(auth)
@@ -175,12 +224,28 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
       .set(auth)
       .expect(200)
       .expect(({ body }) => expect(body.data.isActive).toBe(false));
-    await request(app.getHttpServer()).delete('/api/v1/mates/me').set(auth).expect(200);
-    await request(app.getHttpServer()).get('/api/v1/mates/me').set(auth).expect(200);
-    await request(app.getHttpServer()).patch('/api/v1/mates/me').set(auth).send({ bio: 'No' }).expect(422);
-    await request(app.getHttpServer()).get(`/api/v1/mates/${data.mate1.id}`).expect(404);
-    const search = await request(app.getHttpServer()).get('/api/v1/mates').expect(200);
-    expect(search.body.data.items.map((mate: { id: number }) => mate.id)).not.toContain(data.mate1.id);
+    await request(app.getHttpServer())
+      .delete('/api/v1/mates/me')
+      .set(auth)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/api/v1/mates/me')
+      .set(auth)
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch('/api/v1/mates/me')
+      .set(auth)
+      .send({ bio: 'No' })
+      .expect(422);
+    await request(app.getHttpServer())
+      .get(`/api/v1/mates/${data.mate1.id}`)
+      .expect(404);
+    const search = await request(app.getHttpServer())
+      .get('/api/v1/mates')
+      .expect(200);
+    expect(
+      search.body.data.items.map((mate: { id: number }) => mate.id),
+    ).not.toContain(data.mate1.id);
   });
 
   it('MATE-12/SEC-08 never exposes a password through own mate profile responses', async () => {
@@ -189,20 +254,35 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
       .set(bearer(tokens.mate1))
       .expect(200);
     expect(JSON.stringify(response.body)).not.toContain('password');
-    expect(response.body.data.mate.user).toEqual({ id: data.mateUser1.id, name: data.mateUser1.name });
+    expect(response.body.data.mate.user).toEqual({
+      id: data.mateUser1.id,
+      name: data.mateUser1.name,
+    });
   });
 
   it('PHOTO-01/02/03/05 uploads supported image bytes, accepts URLs, and caps the gallery', async () => {
     const auth = bearer(tokens.mate1);
-    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+    const png = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
+    ]);
     const uploaded = await request(app.getHttpServer())
       .post('/api/v1/mates/me/photos')
       .set(auth)
-      .attach('photo', png, { filename: 'avatar.png', contentType: 'image/png' })
+      .attach('photo', png, {
+        filename: 'avatar.png',
+        contentType: 'image/png',
+      })
       .expect(201);
-    expect(uploaded.body.data.photo).toMatchObject({ mateId: data.mate1.id, sortOrder: 0 });
+    expect(uploaded.body.data.photo).toMatchObject({
+      mateId: data.mate1.id,
+      sortOrder: 0,
+    });
     expect(uploaded.body.data.photo.url).toMatch(/^data:image\/png;base64,/);
-    await request(app.getHttpServer()).post('/api/v1/mates/me/photos').set(auth).send({}).expect(400);
+    await request(app.getHttpServer())
+      .post('/api/v1/mates/me/photos')
+      .set(auth)
+      .send({})
+      .expect(400);
 
     for (let index = 1; index < 6; index++) {
       await request(app.getHttpServer())
@@ -216,7 +296,9 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
       .set(auth)
       .send({ url: 'https://example.com/seventh.jpg' })
       .expect(409);
-    expect(await db.orm.public.MatePhoto.where({ mateId: data.mate1.id }).all()).toHaveLength(6);
+    expect(
+      await db.orm.public.MatePhoto.where({ mateId: data.mate1.id }).all(),
+    ).toHaveLength(6);
   });
 
   it('PHOTO-06/07 deletes only an owned photo and reuses the first free sort order', async () => {
@@ -249,7 +331,9 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
   });
 
   it('AVAIL-01/02/03 creates sorted slots and rejects malformed or overlapping ranges', async () => {
-    await db.orm.public.MateAvailability.where({ mateId: data.mate1.id }).deleteAndCount();
+    await db.orm.public.MateAvailability.where({
+      mateId: data.mate1.id,
+    }).deleteAndCount();
     const auth = bearer(tokens.mate1);
     await request(app.getHttpServer())
       .post('/api/v1/mates/me/availability')
@@ -276,10 +360,11 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
       .get('/api/v1/mates/me/availability')
       .set(auth)
       .expect(200);
-    expect(response.body.data.availability.map((slot: { startTime: string }) => slot.startTime)).toEqual([
-      '09:00',
-      '13:00',
-    ]);
+    expect(
+      response.body.data.availability.map(
+        (slot: { startTime: string }) => slot.startTime,
+      ),
+    ).toEqual(['09:00', '13:00']);
   });
 
   it('AVAIL-04/05/06 replaces, updates, and deletes the weekly schedule', async () => {
@@ -297,7 +382,9 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
       .set(auth)
       .send({ endTime: '11:00' })
       .expect(200)
-      .expect(({ body }) => expect(body.data.availability.endTime).toBe('11:00'));
+      .expect(({ body }) =>
+        expect(body.data.availability.endTime).toBe('11:00'),
+      );
     await request(app.getHttpServer())
       .patch(`/api/v1/mates/me/availability/${slotId}`)
       .set(auth)
@@ -368,7 +455,12 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
       hourlyRate: 500,
       avgRating: null,
     });
-    expect(response.body.data.meta).toMatchObject({ page: 1, limit: 1, total: 1, totalPages: 1 });
+    expect(response.body.data.meta).toMatchObject({
+      page: 1,
+      limit: 1,
+      total: 1,
+      totalPages: 1,
+    });
   });
 
   it('SEARCH-03/10 rejects invalid combinations and query bounds', async () => {
@@ -381,9 +473,18 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
       .get('/api/v1/mates')
       .query({ provinceId: otherProvince!.id, districtId: data.district.id })
       .expect(422);
-    await request(app.getHttpServer()).get('/api/v1/mates').query({ minRate: 500, maxRate: 100 }).expect(400);
-    await request(app.getHttpServer()).get('/api/v1/mates').query({ sort: 'name' }).expect(400);
-    await request(app.getHttpServer()).get('/api/v1/mates').query({ limit: 101 }).expect(400);
+    await request(app.getHttpServer())
+      .get('/api/v1/mates')
+      .query({ minRate: 500, maxRate: 100 })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/api/v1/mates')
+      .query({ sort: 'name' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/api/v1/mates')
+      .query({ limit: 101 })
+      .expect(400);
     await request(app.getHttpServer())
       .get('/api/v1/mates')
       .query({ availableDate: '2026-02-30' })
@@ -394,18 +495,32 @@ describe('Mate profiles, availability, gallery, and discovery (e2e)', () => {
     const detail = await request(app.getHttpServer())
       .get(`/api/v1/mates/${data.mate1.id}`)
       .expect(200);
-    expect(detail.body.data.mate).toMatchObject({ id: data.mate1.id, user: { id: data.mateUser1.id } });
+    expect(detail.body.data.mate).toMatchObject({
+      id: data.mate1.id,
+      user: { id: data.mateUser1.id },
+    });
     expect(JSON.stringify(detail.body)).not.toContain(data.mateUser1.email);
     expect(JSON.stringify(detail.body)).not.toContain('password');
 
-    await db.orm.public.User.where({ id: data.mateUser1.id }).update({ isBanned: true });
-    await request(app.getHttpServer()).get(`/api/v1/mates/${data.mate1.id}`).expect(404);
-    const search = await request(app.getHttpServer()).get('/api/v1/mates').expect(200);
-    expect(search.body.data.items.map((mate: { id: number }) => mate.id)).not.toContain(data.mate1.id);
+    await db.orm.public.User.where({ id: data.mateUser1.id }).update({
+      isBanned: true,
+    });
+    await request(app.getHttpServer())
+      .get(`/api/v1/mates/${data.mate1.id}`)
+      .expect(404);
+    const search = await request(app.getHttpServer())
+      .get('/api/v1/mates')
+      .expect(200);
+    expect(
+      search.body.data.items.map((mate: { id: number }) => mate.id),
+    ).not.toContain(data.mate1.id);
   });
 });
 
-async function accessToken(app: INestApplication<App>, email: string): Promise<string> {
+async function accessToken(
+  app: INestApplication<App>,
+  email: string,
+): Promise<string> {
   const response = await request(app.getHttpServer())
     .post('/api/v1/auth/login')
     .send({ email, password: PASSWORD })
@@ -428,7 +543,9 @@ async function createBookingRow(input: {
 }) {
   const date = Temporal.PlainDate.from(input.date);
   const at = (time: string) =>
-    date.toZonedDateTime({ timeZone: 'Asia/Bangkok', plainTime: time }).toInstant();
+    date
+      .toZonedDateTime({ timeZone: 'Asia/Bangkok', plainTime: time })
+      .toInstant();
   return db.orm.public.Booking.create({
     renterId: input.renterId,
     mateId: input.mateId,

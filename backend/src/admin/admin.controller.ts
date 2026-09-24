@@ -10,7 +10,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
+import {
+  successResponse,
+  type ApiResponse,
+} from '../shared/http/api-response.js';
 import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
 import { Roles } from '../shared/authorization/roles.decorator.js';
 import { RolesGuard } from '../shared/authorization/roles.guard.js';
@@ -106,7 +109,11 @@ export class AdminController {
     @Body() dto: ResolveReportDto,
   ): Promise<ApiResponse<{ report: AdminReport }>> {
     const adminId = this.requireAdminId(admin);
-    const report = await this.adminService.resolveReport(adminId, reportId, dto);
+    const report = await this.adminService.resolveReport(
+      adminId,
+      reportId,
+      dto,
+    );
     return successResponse('Report resolved', { report });
   }
 

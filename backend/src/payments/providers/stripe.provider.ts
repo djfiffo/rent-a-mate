@@ -17,8 +17,9 @@ export class StripeProvider {
       throw new ServiceUnavailableException('Payments are not configured');
     }
 
-    return this.stripeClient ??= new Stripe(secretKey, {
-      apiVersion: (process.env['STRIPE_API_VERSION'] ?? '2026-08-26.dahlia') as Stripe.LatestApiVersion,
+    this.client = new Stripe(secretKey, {
+      apiVersion: (process.env['STRIPE_API_VERSION'] ??
+        '2026-08-26.dahlia') as Stripe.LatestApiVersion,
     });
   }
 

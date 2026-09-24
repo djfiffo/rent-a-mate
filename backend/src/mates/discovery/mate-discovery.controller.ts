@@ -1,4 +1,11 @@
-import { Controller, Get, Optional, Param, ParseIntPipe, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Optional,
+  Param,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { successResponse } from '../../shared/http/api-response.js';
 import { ListMatesQueryDto } from './dto/list-mates-query.dto.js';
 import { normalizeMateDiscoveryQuery } from './mate-discovery.query.js';
@@ -14,7 +21,10 @@ export class MateDiscoveryController {
 
   @Get()
   async list(@Query() query: ListMatesQueryDto) {
-    return successResponse('OK', await this.discoveryService.list(normalizeMateDiscoveryQuery(query)));
+    return successResponse(
+      'OK',
+      await this.discoveryService.list(normalizeMateDiscoveryQuery(query)),
+    );
   }
 
   @Get(':mateId/availability')
@@ -27,7 +37,9 @@ export class MateDiscoveryController {
     }
     return successResponse('OK', {
       date,
-      openSlots: (await this.availabilityService.getPublicAvailability(mateId, date)).map((slot) => ({
+      openSlots: (
+        await this.availabilityService.getPublicAvailability(mateId, date)
+      ).map((slot) => ({
         start: slot.startTime,
         end: slot.endTime,
       })),

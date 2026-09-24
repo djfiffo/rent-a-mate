@@ -39,6 +39,8 @@ describe('CreateMateProfileDto', () => {
 
 describe('UpdateMateProfileDto', () => {
   it('accepts a partial update', async () => {
-    await expect(errorsFor(UpdateMateProfileDto, { bio: 'Updated bio' })).resolves.toHaveLength(0);
+    await expect(
+      errorsFor(UpdateMateProfileDto, { bio: 'Updated bio' }),
+    ).resolves.toHaveLength(0);
   });
 });

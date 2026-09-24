@@ -15,7 +15,10 @@ function createFixture() {
     webhookSecret: 'whsec_test',
   };
 
-  const service = new StripeWebhookService(paymentsService as never, stripeProvider as never);
+  const service = new StripeWebhookService(
+    paymentsService as never,
+    stripeProvider as never,
+  );
   return { service, paymentsService, stripeProvider };
 }
 
@@ -28,7 +31,9 @@ describe('StripeWebhookService', () => {
       throw new Error('bad signature');
     });
 
-    await expect(service.processEvent(rawBody, 'sig')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.processEvent(rawBody, 'sig')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
     expect(paymentsService.isWebhookEventProcessed).not.toHaveBeenCalled();
   });
 
@@ -58,7 +63,10 @@ describe('StripeWebhookService', () => {
     await service.processEvent(rawBody, 'sig');
 
     expect(paymentsService.markPaid).toHaveBeenCalledWith('pi_123');
-    expect(paymentsService.recordWebhookEvent).toHaveBeenCalledWith('evt_1', 'payment_intent.succeeded');
+    expect(paymentsService.recordWebhookEvent).toHaveBeenCalledWith(
+      'evt_1',
+      'payment_intent.succeeded',
+    );
   });
 
   it('dispatches payment_intent.payment_failed to markFailed', async () => {
@@ -113,6 +121,9 @@ describe('StripeWebhookService', () => {
     expect(paymentsService.markPaid).not.toHaveBeenCalled();
     expect(paymentsService.markFailed).not.toHaveBeenCalled();
     expect(paymentsService.markRefunded).not.toHaveBeenCalled();
-    expect(paymentsService.recordWebhookEvent).toHaveBeenCalledWith('evt_5', 'customer.created');
+    expect(paymentsService.recordWebhookEvent).toHaveBeenCalledWith(
+      'evt_5',
+      'customer.created',
+    );
   });
 });

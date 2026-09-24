@@ -1,11 +1,5 @@
 import { Transform } from 'class-transformer';
-import {
-  IsInt,
-  IsOptional,
-  Matches,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
 
 const DAY_NAMES: Record<string, number> = {
   MON: 1,
@@ -18,7 +12,8 @@ const DAY_NAMES: Record<string, number> = {
 };
 
 const toDayNumber = ({ value }: { value: unknown }) => {
-  if (typeof value === 'string') return DAY_NAMES[value.trim().toUpperCase()] ?? Number(value);
+  if (typeof value === 'string')
+    return DAY_NAMES[value.trim().toUpperCase()] ?? Number(value);
   return value;
 };
 

@@ -12,7 +12,8 @@ const DAY_NAMES: Record<string, number> = {
 };
 
 const toDayNumber = ({ value }: { value: unknown }) => {
-  if (typeof value === 'string') return DAY_NAMES[value.trim().toUpperCase()] ?? Number(value);
+  if (typeof value === 'string')
+    return DAY_NAMES[value.trim().toUpperCase()] ?? Number(value);
   return value;
 };
 

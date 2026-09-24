@@ -7,5 +7,8 @@ export interface MateUpload {
 
 export interface MateStorageProvider {
   remove(storageKey: string): Promise<void>;
-  store(mateId: number, file: MateUpload): Promise<{ url: string; storageKey: string }>;
+  store(
+    mateId: number,
+    file: MateUpload,
+  ): Promise<{ url: string; storageKey: string }>;
 }

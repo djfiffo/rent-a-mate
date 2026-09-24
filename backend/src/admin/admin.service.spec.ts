@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AdminService } from './admin.service.js';
-import { ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 
 // Mock the db module — vi.mock is hoisted, so import Temporal inside the factory
 vi.mock('../prisma/db.js', async () => {
@@ -9,18 +13,58 @@ vi.mock('../prisma/db.js', async () => {
   const yesterday = now.subtract({ hours: 24 });
 
   const mockUsers = [
-    { id: 1, name: 'Admin', email: 'admin@test.com', role: 'admin', password: 'hash', isActive: true, isBanned: false, isVerified: false, createdAt: now, updatedAt: now },
-    { id: 2, name: 'John Renter', email: 'john@test.com', role: 'renter', password: 'hash', isActive: true, isBanned: false, isVerified: false, createdAt: yesterday, updatedAt: yesterday },
-    { id: 3, name: 'Jane Mate', email: 'jane@test.com', role: 'mate', password: 'hash', isActive: true, isBanned: false, isVerified: false, createdAt: yesterday, updatedAt: yesterday },
+    {
+      id: 1,
+      name: 'Admin',
+      email: 'admin@test.com',
+      role: 'admin',
+      password: 'hash',
+      isActive: true,
+      isBanned: false,
+      isVerified: false,
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: 2,
+      name: 'John Renter',
+      email: 'john@test.com',
+      role: 'renter',
+      password: 'hash',
+      isActive: true,
+      isBanned: false,
+      isVerified: false,
+      createdAt: yesterday,
+      updatedAt: yesterday,
+    },
+    {
+      id: 3,
+      name: 'Jane Mate',
+      email: 'jane@test.com',
+      role: 'mate',
+      password: 'hash',
+      isActive: true,
+      isBanned: false,
+      isVerified: false,
+      createdAt: yesterday,
+      updatedAt: yesterday,
+    },
   ];
 
   const mockMates = [
-    { id: 10, userId: 3, age: 25, bio: 'Mate bio', provinceId: 1, districtId: 1, hourlyRate: 350, isActive: true },
+    {
+      id: 10,
+      userId: 3,
+      age: 25,
+      bio: 'Mate bio',
+      provinceId: 1,
+      districtId: 1,
+      hourlyRate: 350,
+      isActive: true,
+    },
   ];
 
-  const mockActivities = [
-    { id: 5, name: 'Dining' },
-  ];
+  const mockActivities = [{ id: 5, name: 'Dining' }];
 
   const mockBookings = [
     {
@@ -61,10 +105,22 @@ vi.mock('../prisma/db.js', async () => {
       count: vi.fn(() => {
         throw new Error('Collection count() is not a valid aggregate terminal');
       }),
-      aggregate: vi.fn(async (select: (aggregate: { count: () => undefined; sum: () => undefined }) => Record<string, unknown>) => {
-        const selected = select({ count: () => undefined, sum: () => undefined });
-        return Object.fromEntries(Object.keys(selected).map((key) => [key, items.length]));
-      }),
+      aggregate: vi.fn(
+        async (
+          select: (aggregate: {
+            count: () => undefined;
+            sum: () => undefined;
+          }) => Record<string, unknown>,
+        ) => {
+          const selected = select({
+            count: () => undefined,
+            sum: () => undefined,
+          });
+          return Object.fromEntries(
+            Object.keys(selected).map((key) => [key, items.length]),
+          );
+        },
+      ),
       where: vi.fn((filter: any) => {
         let filtered = items;
         if (typeof filter === 'function') {
@@ -95,7 +151,9 @@ vi.mock('../prisma/db.js', async () => {
       }),
       orderBy: vi.fn(() => createQueryMock(items)),
       limit: vi.fn((lim: number) => ({
-        offset: vi.fn((off: number) => createQueryMock(items.slice(off, off + lim))),
+        offset: vi.fn((off: number) =>
+          createQueryMock(items.slice(off, off + lim)),
+        ),
       })),
     };
     return q;
@@ -108,11 +166,21 @@ vi.mock('../prisma/db.js', async () => {
           User: {
             all: vi.fn(() => Promise.resolve([...mockUsers])),
             where: vi.fn((filter: any) => {
-              if (typeof filter === 'object' && filter !== null && 'id' in filter) {
+              if (
+                typeof filter === 'object' &&
+                filter !== null &&
+                'id' in filter
+              ) {
                 return {
-                  first: vi.fn(() => Promise.resolve(mockUsers.find((u) => u.id === filter.id) ?? null)),
+                  first: vi.fn(() =>
+                    Promise.resolve(
+                      mockUsers.find((u) => u.id === filter.id) ?? null,
+                    ),
+                  ),
                   update: vi.fn(async (data: Record<string, unknown>) => {
-                    const user = mockUsers.find((candidate) => candidate.id === filter.id);
+                    const user = mockUsers.find(
+                      (candidate) => candidate.id === filter.id,
+                    );
                     if (!user) return null;
                     Object.assign(user, data);
                     return user;
@@ -124,18 +192,30 @@ vi.mock('../prisma/db.js', async () => {
           },
           Booking: {
             all: vi.fn(() => Promise.resolve([...mockBookings])),
-            where: vi.fn((filter: any) => createQueryMock(mockBookings).where(filter)),
+            where: vi.fn((filter: any) =>
+              createQueryMock(mockBookings).where(filter),
+            ),
           },
           Payment: {
             all: vi.fn(() => Promise.resolve([...mockPayments])),
-            where: vi.fn((filter: any) => createQueryMock(mockPayments).where(filter)),
+            where: vi.fn((filter: any) =>
+              createQueryMock(mockPayments).where(filter),
+            ),
           },
           Mate: {
             all: vi.fn(() => Promise.resolve([...mockMates])),
             where: vi.fn((filter: any) => {
-              if (typeof filter === 'object' && filter !== null && 'userId' in filter) {
+              if (
+                typeof filter === 'object' &&
+                filter !== null &&
+                'userId' in filter
+              ) {
                 return {
-                  first: vi.fn(() => Promise.resolve(mockMates.find((m) => m.userId === filter.userId) ?? null)),
+                  first: vi.fn(() =>
+                    Promise.resolve(
+                      mockMates.find((m) => m.userId === filter.userId) ?? null,
+                    ),
+                  ),
                   update: vi.fn(() => Promise.resolve(null)),
                 };
               }
@@ -144,11 +224,15 @@ vi.mock('../prisma/db.js', async () => {
           },
           Activity: {
             all: vi.fn(() => Promise.resolve([...mockActivities])),
-            where: vi.fn((filter: any) => createQueryMock(mockActivities).where(filter)),
+            where: vi.fn((filter: any) =>
+              createQueryMock(mockActivities).where(filter),
+            ),
           },
           Report: {
             all: vi.fn(() => Promise.resolve([...mockReports])),
-            where: vi.fn((filter: any) => createQueryMock(mockReports).where(filter)),
+            where: vi.fn((filter: any) =>
+              createQueryMock(mockReports).where(filter),
+            ),
           },
           RefreshToken: {
             where: vi.fn(() => ({
@@ -203,11 +287,15 @@ describe('AdminService', () => {
 
   describe('banUser', () => {
     it('should throw ForbiddenException when banning self', async () => {
-      await expect(service.banUser(1, 1, 'reason')).rejects.toThrow(ForbiddenException);
+      await expect(service.banUser(1, 1, 'reason')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should throw NotFoundException for non-existent user', async () => {
-      await expect(service.banUser(1, 999, 'reason')).rejects.toThrow(NotFoundException);
+      await expect(service.banUser(1, 999, 'reason')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should return a persisted banned user state', async () => {
@@ -240,7 +328,9 @@ describe('AdminService', () => {
     });
 
     it('should throw UnprocessableEntityException for non-mate user', async () => {
-      await expect(service.verifyUser(2)).rejects.toThrow(UnprocessableEntityException);
+      await expect(service.verifyUser(2)).rejects.toThrow(
+        UnprocessableEntityException,
+      );
     });
 
     it('should return safe user with isVerified: true for mate', async () => {
@@ -254,7 +344,9 @@ describe('AdminService', () => {
 
   describe('activateUser', () => {
     it('should throw NotFoundException for non-existent user', async () => {
-      await expect(service.activateUser(999)).rejects.toThrow(NotFoundException);
+      await expect(service.activateUser(999)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should return safe user with isActive: true', async () => {
@@ -284,7 +376,10 @@ describe('AdminService', () => {
 
       expect(result.meta.total).toBe(1);
       expect(result.items).toEqual([
-        expect.objectContaining({ id: 201, reporter: { id: 2, name: 'John Renter' } }),
+        expect.objectContaining({
+          id: 201,
+          reporter: { id: 2, name: 'John Renter' },
+        }),
       ]);
     });
   });
@@ -316,7 +411,9 @@ describe('AdminService', () => {
     it('should reject invalid calendar date like 2026-02-30', async () => {
       await expect(
         service.getAnalytics({ from: '2026-02-30', to: '2026-03-05' }),
-      ).rejects.toThrow('from must be a valid calendar date in YYYY-MM-DD format');
+      ).rejects.toThrow(
+        'from must be a valid calendar date in YYYY-MM-DD format',
+      );
     });
   });
 });

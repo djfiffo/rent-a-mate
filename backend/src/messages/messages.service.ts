@@ -11,6 +11,7 @@ import type { PaginatedResult } from '../shared/types/pagination.js';
 import { MESSAGES_DATABASE_TOKEN } from './messages.tokens.js';
 import type {
   CreateMessageResult,
+  CreateMessageOutcome,
   MessageDatabase,
   MessageParticipants,
   MessageRecord,
@@ -22,12 +23,9 @@ import { ListMessagesQueryDto } from './dto/list-messages-query.dto.js';
  * Owns all `messages` persistence and the REST HTTP surface
  * (`MessagesController`) for it. Deliberately kept HTTP-agnostic: every
  * public method takes a plain `AuthUser` plus primitive/DTO arguments and
- * returns plain data, never touching `Request`/`Response`. This lets a
- * future Socket.IO gateway (`/chat` namespace, see docs/spec.md 6.7) inject
- * this same service and call `assertParticipant()` for `join_booking` /
- * `mark_read` authorization and `create()` for `send_message`, without
- * duplicating any persistence or authorization logic — the REST controller
- * and the gateway would both be thin callers of this one service.
+ * returns plain data, never touching `Request`/`Response`. The Socket.IO
+ * gateway reuses participant and read-state rules but does not write
+ * messages; POST is the single message-create transport.
  */
 @Injectable()
 export class MessagesService {
@@ -43,17 +41,24 @@ export class MessagesService {
    * booking and a non-participant caller, so a client cannot use this
    * endpoint to probe whether a given booking id exists.
    *
-   * Public so it can be reused as-is by a future Socket.IO gateway to
+   * Public so it can be reused as-is by the Socket.IO gateway to
    * authorize `join_booking`/`leave_booking`/`mark_read` events with the
    * exact same rule REST uses, per spec 6.7.
    */
-  async assertParticipant(user: AuthUser, bookingId: number): Promise<MessageParticipants> {
-    const booking = await this.database.orm.public.Booking.where({ id: bookingId }).first();
+  async assertParticipant(
+    user: AuthUser,
+    bookingId: number,
+  ): Promise<MessageParticipants> {
+    const booking = await this.database.orm.public.Booking.where({
+      id: bookingId,
+    }).first();
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
 
-    const mate = await this.database.orm.public.Mate.where({ id: booking.mateId }).first();
+    const mate = await this.database.orm.public.Mate.where({
+      id: booking.mateId,
+    }).first();
     if (!mate) {
       throw new NotFoundException('Mate not found');
     }
@@ -82,63 +87,83 @@ export class MessagesService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
-    const all = await this.database.orm.public.Message.where({ bookingId }).all();
-    const sorted = [...all].sort((a, b) => this.toEpochMillis(a.createdAt) - this.toEpochMillis(b.createdAt));
+    const all = await this.database.orm.public.Message.where({
+      bookingId,
+    }).all();
+    const sorted = [...all].sort(
+      (a, b) =>
+        this.toEpochMillis(a.createdAt) - this.toEpochMillis(b.createdAt),
+    );
 
     const total = sorted.length;
     const offset = (page - 1) * limit;
     const items = sorted.slice(offset, offset + limit);
 
-    return { items, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return {
+      items,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   /**
    * Persists a message and notifies the other participant, atomically.
    *
-   * This is the single write path for `messages`, per spec 6.7 ("The REST
-   * message service is the only code path that writes `messages`; the
-   * gateway never duplicates persistence logic."). A future `send_message`
-   * Socket.IO handler should call this same method and broadcast its
-   * result to the `booking:{bookingId}` room instead of re-implementing
-   * any of the checks or writes below.
+   * This is the single write path for `messages`. The REST controller calls
+   * it once, then publishes the committed result for realtime broadcast.
    */
   async create(
     user: AuthUser,
     bookingId: number,
     dto: CreateMessageDto,
-  ): Promise<CreateMessageResult> {
-    const { booking, recipientId } = await this.assertParticipant(user, bookingId);
+  ): Promise<CreateMessageOutcome> {
+    const { booking, recipientId } = await this.assertParticipant(
+      user,
+      bookingId,
+    );
 
     if (booking.status !== 'confirmed' && booking.status !== 'completed') {
       throw new UnprocessableEntityException('MESSAGE_NOT_ALLOWED');
     }
 
-    return this.database.transaction(async (tx) => {
-      const message = await tx.orm.public.Message.create({
-        bookingId,
-        senderId: user.id,
-        content: dto.content,
-      });
+    const existing = await this.findByClientMessageId(
+      user.id,
+      dto.clientMessageId,
+    );
+    if (existing) {
+      return { message: this.toResult(existing), created: false };
+    }
 
-      await this.notificationsService.create(
-        {
-          userId: recipientId,
-          type: 'message_received',
-          message: 'You have a new message',
+    try {
+      const message = await this.database.transaction(async (tx) => {
+        const created = await tx.orm.public.Message.create({
           bookingId,
-        },
-        tx,
-      );
+          senderId: user.id,
+          clientMessageId: dto.clientMessageId,
+          content: dto.content,
+        });
 
-      return {
-        id: message.id,
-        bookingId: message.bookingId,
-        senderId: message.senderId,
-        content: message.content,
-        readAt: message.readAt,
-        createdAt: message.createdAt,
-      };
-    });
+        await this.notificationsService.create(
+          {
+            userId: recipientId,
+            type: 'message_received',
+            message: 'You have a new message',
+            bookingId,
+          },
+          tx,
+        );
+
+        return this.toResult(created);
+      });
+      return { message, created: true };
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) throw error;
+      const raced = await this.findByClientMessageId(
+        user.id,
+        dto.clientMessageId,
+      );
+      if (!raced) throw error;
+      return { message: this.toResult(raced), created: false };
+    }
   }
 
   /**
@@ -146,12 +171,16 @@ export class MessagesService {
    * Never marks the caller's own messages (there is no concept of
    * "read by sender"). `readAt` otherwise stays `null` forever per spec
    * 6.7 — this is the only code path that ever sets it, and today it is
-   * only reachable via the future Socket.IO `mark_read` event (no REST
+   * reachable via the Socket.IO `mark_read` event (no REST
    * mark-read endpoint exists for messages).
    */
-  async markRead(user: AuthUser, bookingId: number): Promise<{ updatedCount: number }> {
+  async markRead(
+    user: AuthUser,
+    bookingId: number,
+  ): Promise<{ updatedCount: number }> {
     const { booking, mate } = await this.assertParticipant(user, bookingId);
-    const otherParticipantId = booking.renterId === user.id ? mate.userId : booking.renterId;
+    const otherParticipantId =
+      booking.renterId === user.id ? mate.userId : booking.renterId;
 
     const updatedCount = await this.database.orm.public.Message.where({
       bookingId,
@@ -171,4 +200,31 @@ export class MessagesService {
     }
     return new Date(String(value)).getTime();
   }
+
+  private findByClientMessageId(senderId: number, clientMessageId: string) {
+    return this.database.orm.public.Message.where({
+      senderId,
+      clientMessageId,
+    }).first();
+  }
+
+  private toResult(message: MessageRecord): CreateMessageResult {
+    return {
+      id: message.id,
+      bookingId: message.bookingId,
+      senderId: message.senderId,
+      content: message.content,
+      readAt: message.readAt,
+      createdAt: message.createdAt,
+    };
+  }
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
 }

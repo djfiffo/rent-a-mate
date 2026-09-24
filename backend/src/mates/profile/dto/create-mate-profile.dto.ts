@@ -19,7 +19,9 @@ export class CreateMateProfileDto {
   @Max(120)
   age!: number;
 
-  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsOptional()
   @IsString()
   @MinLength(1)

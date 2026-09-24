@@ -9,7 +9,9 @@ process.env.STRIPE_WEBHOOK_SECRET = 'whsec_e2e';
 
 const configuredUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 if (!configuredUrl) {
-  throw new Error('TEST_DATABASE_URL or DATABASE_URL is required for E2E tests');
+  throw new Error(
+    'TEST_DATABASE_URL or DATABASE_URL is required for E2E tests',
+  );
 }
 
 const databaseUrl = new URL(configuredUrl);
@@ -19,7 +21,9 @@ if (!process.env.TEST_DATABASE_URL) {
 
 const databaseName = databaseUrl.pathname.slice(1);
 if (!/(^|_)test($|_)/i.test(databaseName)) {
-  throw new Error(`Refusing to run E2E tests against non-test database: ${databaseName}`);
+  throw new Error(
+    `Refusing to run E2E tests against non-test database: ${databaseName}`,
+  );
 }
 
 process.env.DATABASE_URL = databaseUrl.toString();
