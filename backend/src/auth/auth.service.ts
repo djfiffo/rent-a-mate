@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Temporal } from '@js-temporal/polyfill';
 import { createHash, randomUUID } from 'node:crypto';
 import { db } from '../prisma/db.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
 import { PasswordHashService } from '../shared/security/password/password-hash.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
@@ -163,6 +164,22 @@ export class AuthService {
 			message: 'Current user retrieved',
 			data: { user: this.toPublicUser(user) },
 		};
+	}
+
+	async createSocketTicket(user: AuthUser) {
+		if (!Number.isInteger(user.id) || user.id <= 0 || !user.role) {
+			throw new UnauthorizedException('Authenticated user is required');
+		}
+		const ticket = await this.jwtService.signAsync(
+			{
+				sub: user.id,
+				role: user.role,
+				jti: randomUUID(),
+				type: 'socket_ticket',
+			},
+			{ secret: this.accessSecret, expiresIn: '30s' },
+		);
+		return { status: 'success' as const, message: 'Socket ticket created', data: { ticket } };
 	}
 
 	private readonly accessSecret = process.env['JWT_ACCESS_SECRET'];

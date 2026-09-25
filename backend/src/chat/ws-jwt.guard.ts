@@ -7,7 +7,9 @@ import type { ChatSocketData } from './chat.types.js';
 type AccessTokenPayload = {
   sub: number;
   role: string;
-  type: 'access' | 'refresh';
+  type: 'socket_ticket';
+  jti: string;
+  exp: number;
 };
 
 /**
@@ -25,6 +27,7 @@ type AccessTokenPayload = {
 @Injectable()
 export class WsJwtGuard {
   private readonly logger = new Logger(WsJwtGuard.name);
+  private readonly consumedTickets = new Map<string, number>();
 
   constructor(private readonly jwtService: JwtService) {}
 
@@ -34,21 +37,29 @@ export class WsJwtGuard {
    * or the account is banned/inactive.
    */
   async authenticate(client: Socket): Promise<ChatSocketData['user']> {
-    const token = this.extractToken(client);
-    if (!token) {
-      throw new UnauthorizedException('Missing token');
+    const ticket = this.extractTicket(client);
+    if (!ticket) {
+      throw new UnauthorizedException('Missing socket ticket');
     }
 
     let payload: AccessTokenPayload;
     try {
-      payload = await this.jwtService.verifyAsync<AccessTokenPayload>(token);
+      payload = await this.jwtService.verifyAsync<AccessTokenPayload>(ticket);
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    if (payload.type !== 'access') {
-      throw new UnauthorizedException('Invalid access token');
+    if (payload.type !== 'socket_ticket' || !payload.jti || !payload.exp) {
+      throw new UnauthorizedException('Invalid socket ticket');
     }
+    const now = Math.floor(Date.now() / 1000);
+    for (const [jti, expiresAt] of this.consumedTickets) {
+      if (expiresAt <= now) this.consumedTickets.delete(jti);
+    }
+    if (this.consumedTickets.has(payload.jti)) {
+      throw new UnauthorizedException('Socket ticket has already been used');
+    }
+    this.consumedTickets.set(payload.jti, payload.exp);
 
     const user = await db.orm.public.User.where({ id: payload.sub }).first();
     if (!user) {
@@ -71,10 +82,10 @@ export class WsJwtGuard {
     client.disconnect(true);
   }
 
-  private extractToken(client: Socket): string | undefined {
-    const token = client.handshake.auth?.['token'];
-    if (typeof token === 'string' && token.length > 0) {
-      return token;
+  private extractTicket(client: Socket): string | undefined {
+    const ticket = client.handshake.auth?.['ticket'];
+    if (typeof ticket === 'string' && ticket.length > 0) {
+      return ticket;
     }
     return undefined;
   }

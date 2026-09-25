@@ -47,6 +47,17 @@ export class BookingPaymentsController {
     return successResponse('Payment intent created', result);
   }
 
+  @Post('confirm')
+  @Roles('renter')
+  async confirmLocalMockPayment(
+    @CurrentUser() user: AuthUser | undefined,
+    @Param('bookingId', ParseIntPipe) bookingId: number,
+  ): Promise<ApiResponse<PaymentDetail>> {
+    const authUser = requireUser(user);
+    const result = await this.paymentsService.confirmLocalMockPayment(authUser, bookingId);
+    return successResponse('Local test payment completed', result);
+  }
+
   @Get()
   async getStatus(
     @CurrentUser() user: AuthUser | undefined,

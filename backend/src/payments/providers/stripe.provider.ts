@@ -11,6 +11,10 @@ import Stripe from 'stripe';
 export class StripeProvider {
   private stripeClient?: Stripe;
 
+  get localMockEnabled(): boolean {
+    return process.env['PAYMENTS_MODE'] === 'mock' && process.env['NODE_ENV'] !== 'production';
+  }
+
   get client(): Stripe {
     const secretKey = process.env['STRIPE_SECRET_KEY'];
     if (!secretKey) {

@@ -107,6 +107,15 @@ describe('AuthService', () => {
     expect(service).toBeDefined();
   });
 
+  it('creates a short-lived, purpose-specific socket ticket', async () => {
+    const response = await service.createSocketTicket({ id: 7, role: 'renter' });
+    const payload = await jwtService.verifyAsync(response.data.ticket, { secret: ACCESS_SECRET });
+
+    expect(response).toMatchObject({ status: 'success', message: 'Socket ticket created' });
+    expect(payload).toMatchObject({ sub: 7, role: 'renter', type: 'socket_ticket' });
+    expect(payload.exp - payload.iat).toBe(30);
+  });
+
   it('logs out with a valid refresh token and revokes it by jti', async () => {
     const { refreshToken, row } = await createStoredRefreshToken(jwtService);
 

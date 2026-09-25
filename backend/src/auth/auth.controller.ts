@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
@@ -29,6 +29,13 @@ export class AuthController {
 	@Post('logout')
 	logout(@Body() dto: RefreshTokenDto) {
 		return this.authService.logout(dto.refreshToken);
+	}
+
+	@Post('socket-ticket')
+	@UseGuards(JwtAuthGuard)
+	createSocketTicket(@CurrentUser() user: AuthUser | undefined) {
+		if (!user) throw new UnauthorizedException('Authenticated user is required');
+		return this.authService.createSocketTicket(user);
 	}
 
 	@Get('me')
