@@ -110,6 +110,16 @@ export class PaymentsService {
     );
 
     if (existing?.status === 'pending' && existing.providerReference) {
+      if (
+        this.stripeProvider.localMockEnabled &&
+        existing.providerReference === `local_mock_${bookingId}`
+      ) {
+        return {
+          bookingId,
+          status: existing.status,
+          clientSecret: `local_mock_client_secret_${bookingId}`,
+        };
+      }
       // A PaymentIntent was already created for this booking (e.g. the
       // renter navigated away before confirming the card). Retrieve the
       // same intent's client secret instead of creating a second one.
@@ -124,6 +134,28 @@ export class PaymentsService {
     }
 
     return this.database.transaction(async (tx) => {
+      if (this.stripeProvider.localMockEnabled) {
+        const providerReference = `local_mock_${bookingId}`;
+        if (existing) {
+          await tx.orm.public.Payment.where({ bookingId }).update({
+            status: 'pending',
+            providerReference,
+          });
+        } else {
+          await tx.orm.public.Payment.create({
+            bookingId,
+            amount: booking.totalPrice,
+            status: 'pending',
+            providerReference,
+          });
+        }
+        return {
+          bookingId,
+          status: 'pending' as const,
+          clientSecret: `local_mock_client_secret_${bookingId}`,
+        };
+      }
+
       const intent = await this.stripeProvider.client.paymentIntents.create(
         {
           amount: amountInSmallestUnit,
@@ -153,6 +185,36 @@ export class PaymentsService {
         clientSecret: intent.client_secret,
       };
     });
+  }
+
+  async confirmLocalMockPayment(
+    user: AuthUser,
+    bookingId: number,
+  ): Promise<PaymentDetail> {
+    if (!this.stripeProvider.localMockEnabled) {
+      throw new NotFoundException('Local test payments are not enabled');
+    }
+    const { booking } = await this.assertParticipant(user, bookingId);
+    if (booking.renterId !== user.id) {
+      throw new ForbiddenException(
+        'Only the renter who owns this booking can pay for it',
+      );
+    }
+    const payment = await this.database.orm.public.Payment.where({
+      bookingId,
+    }).first();
+    if (
+      !payment ||
+      payment.status !== 'pending' ||
+      payment.providerReference !== `local_mock_${bookingId}`
+    ) {
+      throw new UnprocessableEntityException(
+        'LOCAL_TEST_PAYMENT_NOT_AVAILABLE',
+      );
+    }
+
+    await this.markPaid(payment.providerReference);
+    return this.getStatus(user, bookingId);
   }
 
   /**

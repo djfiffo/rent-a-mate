@@ -59,7 +59,9 @@ export function readMinioConfig(
     try {
       new URL(publicUrl);
     } catch {
-      throw new Error('MINIO_PUBLIC_URL must be an absolute URL or an absolute path');
+      throw new Error(
+        'MINIO_PUBLIC_URL must be an absolute URL or an absolute path',
+      );
     }
   }
 
