@@ -7,7 +7,9 @@ describe('PasswordHashService', () => {
     const service = new PasswordHashService();
     const hash = await service.hash('correct horse battery staple');
 
-    await expect(service.verify('correct horse battery staple', hash)).resolves.toBe(true);
+    await expect(
+      service.verify('correct horse battery staple', hash),
+    ).resolves.toBe(true);
     await expect(service.verify('wrong password', hash)).resolves.toBe(false);
   });
 
@@ -22,13 +24,17 @@ describe('PasswordHashService', () => {
   it('rejects malformed hashes without throwing', async () => {
     const service = new PasswordHashService();
 
-    await expect(service.verify('any password', 'not-a-bcrypt-hash')).resolves.toBe(false);
+    await expect(
+      service.verify('any password', 'not-a-bcrypt-hash'),
+    ).resolves.toBe(false);
   });
 
   it('continues to verify legacy bcrypt hashes', async () => {
     const service = new PasswordHashService();
     const legacyHash = await bcrypt.hash('legacy password', 12);
 
-    await expect(service.verify('legacy password', legacyHash)).resolves.toBe(true);
+    await expect(service.verify('legacy password', legacyHash)).resolves.toBe(
+      true,
+    );
   });
 });

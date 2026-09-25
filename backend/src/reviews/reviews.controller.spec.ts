@@ -1,12 +1,22 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { BookingReviewController, ReviewsController } from './reviews.controller.js';
+import {
+  BookingReviewController,
+  ReviewsController,
+} from './reviews.controller.js';
 
 describe('BookingReviewController', () => {
   const renter = { id: 7, role: 'renter' as const };
 
   it('wraps create() in the success envelope', async () => {
-    const detail = { id: 1, bookingId: 1, renterId: 7, mateId: 3, rating: 5, comment: null };
+    const detail = {
+      id: 1,
+      bookingId: 1,
+      renterId: 7,
+      mateId: 3,
+      rating: 5,
+      comment: null,
+    };
     const service = { create: vi.fn().mockResolvedValue(detail) };
     const controller = new BookingReviewController(service as never);
 
@@ -22,7 +32,9 @@ describe('BookingReviewController', () => {
     const service = { create: vi.fn() };
     const controller = new BookingReviewController(service as never);
 
-    await expect(controller.create(undefined, 1, { rating: 5 })).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      controller.create(undefined, 1, { rating: 5 }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(service.create).not.toHaveBeenCalled();
   });
 });
@@ -31,7 +43,14 @@ describe('ReviewsController', () => {
   const renter = { id: 7, role: 'renter' as const };
 
   it('wraps update() in the success envelope', async () => {
-    const detail = { id: 1, bookingId: 1, renterId: 7, mateId: 3, rating: 4, comment: 'Updated' };
+    const detail = {
+      id: 1,
+      bookingId: 1,
+      renterId: 7,
+      mateId: 3,
+      rating: 4,
+      comment: 'Updated',
+    };
     const service = { update: vi.fn().mockResolvedValue(detail) };
     const controller = new ReviewsController(service as never);
 
@@ -47,7 +66,9 @@ describe('ReviewsController', () => {
     const service = { update: vi.fn() };
     const controller = new ReviewsController(service as never);
 
-    await expect(controller.update(undefined, 1, { rating: 4 })).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      controller.update(undefined, 1, { rating: 4 }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(service.update).not.toHaveBeenCalled();
   });
 
@@ -67,7 +88,9 @@ describe('ReviewsController', () => {
     const service = { remove: vi.fn() };
     const controller = new ReviewsController(service as never);
 
-    await expect(controller.remove(undefined, 1)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(controller.remove(undefined, 1)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
     expect(service.remove).not.toHaveBeenCalled();
   });
 });

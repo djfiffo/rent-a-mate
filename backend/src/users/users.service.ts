@@ -9,7 +9,11 @@ import { Temporal } from '@js-temporal/polyfill';
 import { PASSWORD_SERVICE } from '../shared/security/password/password.tokens.js';
 import type { PasswordService } from '../shared/security/password/password.types.js';
 import { DATABASE_TOKEN } from './users.tokens.js';
-import type { ChangeEmailDto, ChangePasswordDto, UpdateProfileDto } from './dto/index.js';
+import type {
+  ChangeEmailDto,
+  ChangePasswordDto,
+  UpdateProfileDto,
+} from './dto/index.js';
 import type { SafeUser, UserDatabase, UserRecord } from './users.types.js';
 
 @Injectable()
@@ -23,10 +27,15 @@ export class UsersService {
     return this.toSafeUser(await this.requireUser(userId));
   }
 
-  async updateProfile(userId: number, input: UpdateProfileDto): Promise<SafeUser> {
+  async updateProfile(
+    userId: number,
+    input: UpdateProfileDto,
+  ): Promise<SafeUser> {
     await this.requireUser(userId);
     return this.toSafeUser(
-      await this.database.orm.public.User.where({ id: userId }).update({ name: input.name.trim() }),
+      await this.database.orm.public.User.where({ id: userId }).update({
+        name: input.name.trim(),
+      }),
     );
   }
 
@@ -34,13 +43,19 @@ export class UsersService {
     const user = await this.requireUser(userId);
     await this.verifyCurrentPassword(user.password, input.currentPassword);
     const email = input.email.trim().toLowerCase();
-    const existing = await this.database.orm.public.User.where({ email }).first();
+    const existing = await this.database.orm.public.User.where({
+      email,
+    }).first();
     if (existing && existing.id !== userId) {
       throw new ConflictException('Email is already in use');
     }
 
     try {
-      return this.toSafeUser(await this.database.orm.public.User.where({ id: userId }).update({ email }));
+      return this.toSafeUser(
+        await this.database.orm.public.User.where({ id: userId }).update({
+          email,
+        }),
+      );
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('Email is already in use');
@@ -49,18 +64,27 @@ export class UsersService {
     }
   }
 
-  async changePassword(userId: number, input: ChangePasswordDto): Promise<SafeUser> {
+  async changePassword(
+    userId: number,
+    input: ChangePasswordDto,
+  ): Promise<SafeUser> {
     const user = await this.requireUser(userId);
     await this.verifyCurrentPassword(user.password, input.currentPassword);
     const password = await this.passwordService.hash(input.newPassword);
-    const updated = await this.database.orm.public.User.where({ id: userId }).update({ password });
+    const updated = await this.database.orm.public.User.where({
+      id: userId,
+    }).update({ password });
     const refreshTokens = this.database.orm.public.RefreshToken;
     if (refreshTokens) {
       const now = Temporal.Now.instant();
-      const activeTokens = await refreshTokens.where({ userId, revokedAt: null }).all();
+      const activeTokens = await refreshTokens
+        .where({ userId, revokedAt: null })
+        .all();
       await Promise.all(
         activeTokens.map((token) =>
-          refreshTokens.where({ id: token.id, revokedAt: null }).update({ revokedAt: now }),
+          refreshTokens
+            .where({ id: token.id, revokedAt: null })
+            .update({ revokedAt: now }),
         ),
       );
     }
@@ -68,15 +92,23 @@ export class UsersService {
   }
 
   private async requireUser(userId: number): Promise<UserRecord> {
-    const user = await this.database.orm.public.User.where({ id: userId }).first();
+    const user = await this.database.orm.public.User.where({
+      id: userId,
+    }).first();
     if (!user) {
       throw new NotFoundException('User not found');
     }
     return user;
   }
 
-  private async verifyCurrentPassword(passwordHash: string, currentPassword: string): Promise<void> {
-    const valid = await this.passwordService.verify(currentPassword, passwordHash);
+  private async verifyCurrentPassword(
+    passwordHash: string,
+    currentPassword: string,
+  ): Promise<void> {
+    const valid = await this.passwordService.verify(
+      currentPassword,
+      passwordHash,
+    );
     if (!valid) {
       throw new BadRequestException('Current password is invalid');
     }
@@ -98,5 +130,10 @@ export class UsersService {
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
 }

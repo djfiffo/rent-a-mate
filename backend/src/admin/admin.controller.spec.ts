@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { AdminController } from './admin.controller.js';
@@ -86,13 +90,21 @@ describe('AdminController', () => {
 
       expect(() => rolesGuard.canActivate(context)).toThrow(ForbiddenException);
     });
-
   });
 
   describe('listUsers', () => {
     it('should return paginated users', async () => {
       const result = {
-        items: [{ id: 1, name: 'Admin', email: 'admin@test.com', role: 'admin', createdAt: null, updatedAt: null }],
+        items: [
+          {
+            id: 1,
+            name: 'Admin',
+            email: 'admin@test.com',
+            role: 'admin',
+            createdAt: null,
+            updatedAt: null,
+          },
+        ],
         meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
       };
       vi.spyOn(service, 'listUsers').mockResolvedValue(result);
@@ -106,29 +118,41 @@ describe('AdminController', () => {
 
   describe('banUser', () => {
     it('should ban a user and return success envelope', async () => {
-      const user = { id: 2, name: 'Test', email: 'test@test.com', role: 'renter', createdAt: null, updatedAt: null };
+      const user = {
+        id: 2,
+        name: 'Test',
+        email: 'test@test.com',
+        role: 'renter',
+        createdAt: null,
+        updatedAt: null,
+      };
       vi.spyOn(service, 'banUser').mockResolvedValue(user);
 
-      const response = await controller.banUser(
-        { id: 1, role: 'admin' },
-        2,
-        { reason: 'Violation' },
-      );
+      const response = await controller.banUser({ id: 1, role: 'admin' }, 2, {
+        reason: 'Violation',
+      });
       expect(response.status).toBe('success');
       expect(response.message).toBe('User banned');
       expect(response.data.user.id).toBe(2);
     });
 
     it('should throw UnauthorizedException when admin identity is missing', async () => {
-      await expect(controller.banUser(undefined, 2, { reason: 'Violation' })).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        controller.banUser(undefined, 2, { reason: 'Violation' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe('unbanUser', () => {
     it('should return success envelope', async () => {
-      const user = { id: 2, name: 'Test', email: 'test@test.com', role: 'renter', createdAt: null, updatedAt: null };
+      const user = {
+        id: 2,
+        name: 'Test',
+        email: 'test@test.com',
+        role: 'renter',
+        createdAt: null,
+        updatedAt: null,
+      };
       vi.spyOn(service, 'unbanUser').mockResolvedValue(user);
 
       const response = await controller.unbanUser(2);
@@ -139,7 +163,14 @@ describe('AdminController', () => {
 
   describe('verifyUser', () => {
     it('should return success envelope', async () => {
-      const user = { id: 2, name: 'Mate', email: 'mate@test.com', role: 'mate', createdAt: null, updatedAt: null };
+      const user = {
+        id: 2,
+        name: 'Mate',
+        email: 'mate@test.com',
+        role: 'mate',
+        createdAt: null,
+        updatedAt: null,
+      };
       vi.spyOn(service, 'verifyUser').mockResolvedValue(user);
 
       const response = await controller.verifyUser(2);
@@ -150,7 +181,14 @@ describe('AdminController', () => {
 
   describe('activateUser', () => {
     it('should return success envelope', async () => {
-      const user = { id: 2, name: 'Test', email: 'test@test.com', role: 'renter', createdAt: null, updatedAt: null };
+      const user = {
+        id: 2,
+        name: 'Test',
+        email: 'test@test.com',
+        role: 'renter',
+        createdAt: null,
+        updatedAt: null,
+      };
       vi.spyOn(service, 'activateUser').mockResolvedValue(user);
 
       const response = await controller.activateUser(2);

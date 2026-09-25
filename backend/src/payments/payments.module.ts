@@ -3,7 +3,10 @@ import { AuthModule } from '../auth/auth.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { db } from '../prisma/db.js';
 import { AuthorizationModule } from '../shared/authorization/authorization.module.js';
-import { BookingPaymentsController, PaymentsController } from './payments.controller.js';
+import {
+  BookingPaymentsController,
+  PaymentsController,
+} from './payments.controller.js';
 import { PaymentsService } from './payments.service.js';
 import { PAYMENTS_DATABASE_TOKEN } from './payments.tokens.js';
 import { StripeProvider } from './providers/stripe.provider.js';

@@ -87,6 +87,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     process.env.JWT_ACCESS_SECRET = ACCESS_SECRET;
     process.env.JWT_REFRESH_SECRET = REFRESH_SECRET;
+    process.env.JWT_SOCKET_TICKET_SECRET = ACCESS_SECRET;
 
     refreshTokens.clear();
     users.clear();
@@ -107,13 +108,53 @@ describe('AuthService', () => {
     expect(service).toBeDefined();
   });
 
-  it('creates a short-lived, purpose-specific socket ticket', async () => {
-    const response = await service.createSocketTicket({ id: 7, role: 'renter' });
-    const payload = await jwtService.verifyAsync(response.data.ticket, { secret: ACCESS_SECRET });
+  it('issues a short-lived socket ticket that can only be consumed once', async () => {
+    const issued = await service.createSocketTicket({ id: 7, role: 'renter' });
 
-    expect(response).toMatchObject({ status: 'success', message: 'Socket ticket created' });
-    expect(payload).toMatchObject({ sub: 7, role: 'renter', type: 'socket_ticket' });
-    expect(payload.exp - payload.iat).toBe(30);
+    await expect(
+      service.consumeSocketTicket(issued.data.ticket),
+    ).resolves.toEqual({
+      id: 7,
+      role: 'renter',
+    });
+    await expect(
+      service.consumeSocketTicket(issued.data.ticket),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects an expired socket ticket', async () => {
+    vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+    try {
+      const issued = await service.createSocketTicket({
+        id: 7,
+        role: 'renter',
+      });
+      vi.advanceTimersByTime(61_000);
+
+      await expect(
+        service.consumeSocketTicket(issued.data.ticket),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rejects socket tickets with an invalid signature or missing jti', async () => {
+    const invalidSignature = await jwtService.signAsync(
+      { sub: 7, role: 'renter', jti: 'ticket-jti', type: 'socket_ticket' },
+      { secret: 'wrong-secret', expiresIn: '60s' },
+    );
+    const missingJti = await jwtService.signAsync(
+      { sub: 7, role: 'renter', type: 'socket_ticket' },
+      { secret: ACCESS_SECRET, expiresIn: '60s' },
+    );
+
+    await expect(
+      service.consumeSocketTicket(invalidSignature),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      service.consumeSocketTicket(missingJti),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('logs out with a valid refresh token and revokes it by jti', async () => {

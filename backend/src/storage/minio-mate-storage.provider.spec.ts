@@ -37,7 +37,9 @@ describe('MinioMateStorageProvider', () => {
       3,
       { 'Content-Type': 'image/jpeg' },
     );
-    expect(stored.url).toMatch(/^http:\/\/localhost:9000\/rent-a-mate\/mates\/42\/.+\.jpg$/);
+    expect(stored.url).toMatch(
+      /^http:\/\/localhost:9000\/rent-a-mate\/mates\/42\/.+\.jpg$/,
+    );
   });
 
   it('removes objects using the stored key', async () => {
@@ -51,6 +53,9 @@ describe('MinioMateStorageProvider', () => {
 
     await provider.remove('mates/42/photo.jpg');
 
-    expect(client.removeObject).toHaveBeenCalledWith(config.bucket, 'mates/42/photo.jpg');
+    expect(client.removeObject).toHaveBeenCalledWith(
+      config.bucket,
+      'mates/42/photo.jpg',
+    );
   });
 });

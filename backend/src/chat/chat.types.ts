@@ -1,4 +1,3 @@
-import type { CreateMessageResult } from '../messages/messages.types.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 
 /**
@@ -8,7 +7,8 @@ import type { AuthUser } from '../shared/types/auth-user.js';
  * etc.) are caught in `ChatGateway` and mapped to `{ ok: false, error }` via
  * `ackError()` rather than crashing the socket connection.
  */
-export type ChatAck<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
+export type ChatAck<T = undefined> =
+  { ok: true; data?: T } | { ok: false; error: string };
 
 export function ackOk<T>(data?: T): ChatAck<T> {
   return { ok: true, data };
@@ -36,11 +36,6 @@ export interface LeaveBookingPayload {
   bookingId: number;
 }
 
-export interface SendMessagePayload {
-  bookingId: number;
-  content: string;
-}
-
 export interface TypingPayload {
   bookingId: number;
   isTyping: boolean;
@@ -49,9 +44,6 @@ export interface TypingPayload {
 export interface MarkReadPayload {
   bookingId: number;
 }
-
-/** Broadcast to `booking:{bookingId}` (including the sender) after a successful `send_message`. */
-export type NewMessageBroadcast = CreateMessageResult;
 
 /** Broadcast to everyone else in the room on `typing`. */
 export interface TypingBroadcast {

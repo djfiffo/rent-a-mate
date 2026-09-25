@@ -1,4 +1,8 @@
-import { Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
 import type { PaginationMeta } from '../../shared/types/pagination.js';
 import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
@@ -25,13 +29,17 @@ const parseDate = (value: string): Temporal.Instant => {
       .toZonedDateTime({ timeZone: TIMEZONE, plainTime: '00:00' })
       .toInstant();
   } catch {
-    throw new UnprocessableEntityException('availableDate must be a valid date');
+    throw new UnprocessableEntityException(
+      'availableDate must be a valid date',
+    );
   }
 };
 
 const sameDate = (value: unknown, target: Temporal.Instant): boolean => {
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value === target.toZonedDateTimeISO(TIMEZONE).toPlainDate().toString();
+    return (
+      value === target.toZonedDateTimeISO(TIMEZONE).toPlainDate().toString()
+    );
   }
   return toEpochMillis(value) === target.epochMilliseconds;
 };
@@ -40,7 +48,10 @@ const localMinutes = (value: unknown): number => {
   if (typeof value === 'string') return toMinutes(value);
   const epochMilliseconds = toEpochMillis(value);
   if (!Number.isFinite(epochMilliseconds)) return Number.NaN;
-  const local = Temporal.Instant.fromEpochMilliseconds(epochMilliseconds).toZonedDateTimeISO(TIMEZONE);
+  const local =
+    Temporal.Instant.fromEpochMilliseconds(
+      epochMilliseconds,
+    ).toZonedDateTimeISO(TIMEZONE);
   return local.hour * 60 + local.minute;
 };
 
@@ -51,10 +62,16 @@ const hasOpenWindow = (
 ): boolean => {
   const daySlots = slots
     .filter((slot) => slot.dayOfWeek === dayOfWeek)
-    .map((slot) => ({ start: toMinutes(slot.startTime), end: toMinutes(slot.endTime) }))
+    .map((slot) => ({
+      start: toMinutes(slot.startTime),
+      end: toMinutes(slot.endTime),
+    }))
     .sort((left, right) => left.start - right.start);
   const reserved = bookings
-    .map((booking) => ({ start: localMinutes(booking.startTime), end: localMinutes(booking.endTime) }))
+    .map((booking) => ({
+      start: localMinutes(booking.startTime),
+      end: localMinutes(booking.endTime),
+    }))
     .sort((left, right) => left.start - right.start);
 
   return daySlots.some((slot) => {
@@ -72,15 +89,28 @@ const hasOpenWindow = (
 
 @Injectable()
 export class MateDiscoveryService {
-  constructor(@Inject(MATES_DATABASE_TOKEN) private readonly database: DiscoveryDatabase) {}
+  constructor(
+    @Inject(MATES_DATABASE_TOKEN) private readonly database: DiscoveryDatabase,
+  ) {}
 
   async list(query: MateDiscoveryQuery): Promise<MateDiscoveryPage> {
     const tables = this.database.orm.public;
-    const mates = (await modelRows(tables.Mate, { isActive: true })).filter((mate) => mate.isActive !== false);
+    const mates = (await modelRows(tables.Mate, { isActive: true })).filter(
+      (mate) => mate.isActive !== false,
+    );
     const mateIds = mates.map((mate) => mate.id);
     const userIds = mates.map((mate) => mate.userId);
 
-    const [users, provinces, districts, activities, interests, mateActivities, mateInterests, reviewAggregates] = await Promise.all([
+    const [
+      users,
+      provinces,
+      districts,
+      activities,
+      interests,
+      mateActivities,
+      mateInterests,
+      reviewAggregates,
+    ] = await Promise.all([
       rowsByIds(tables.User, 'id', userIds),
       modelRows(tables.Province),
       modelRows(tables.District),
@@ -92,22 +122,48 @@ export class MateDiscoveryService {
     ]);
 
     const usersById = new Map(users.map((user) => [user.id, user]));
-    const provincesById = new Map(provinces.map((province) => [province.id, province]));
-    const districtsById = new Map(districts.map((district) => [district.id, district]));
-    const activitiesById = new Map(activities.map((activity) => [activity.id, activity]));
-    const activityIdsByMate = this.groupIds(mateActivities, 'mateId', 'activityId');
-    const interestIdsByMate = this.groupIds(mateInterests, 'mateId', 'interestId');
+    const provincesById = new Map(
+      provinces.map((province) => [province.id, province]),
+    );
+    const districtsById = new Map(
+      districts.map((district) => [district.id, district]),
+    );
+    const activitiesById = new Map(
+      activities.map((activity) => [activity.id, activity]),
+    );
+    const activityIdsByMate = this.groupIds(
+      mateActivities,
+      'mateId',
+      'activityId',
+    );
+    const interestIdsByMate = this.groupIds(
+      mateInterests,
+      'mateId',
+      'interestId',
+    );
 
     if (query.provinceId !== undefined && query.districtId !== undefined) {
-      const district = districts.find((candidate) => candidate.id === query.districtId);
+      const district = districts.find(
+        (candidate) => candidate.id === query.districtId,
+      );
       if (!district || district.provinceId !== query.provinceId) {
-        throw new UnprocessableEntityException('District does not belong to province');
+        throw new UnprocessableEntityException(
+          'District does not belong to province',
+        );
       }
     }
-    if (query.activityIds.some((id) => !activities.some((activity) => activity.id === id))) {
+    if (
+      query.activityIds.some(
+        (id) => !activities.some((activity) => activity.id === id),
+      )
+    ) {
       throw new UnprocessableEntityException('Invalid activity lookup');
     }
-    if (query.interestIds.some((id) => !interests.some((interest) => interest.id === id))) {
+    if (
+      query.interestIds.some(
+        (id) => !interests.some((interest) => interest.id === id),
+      )
+    ) {
       throw new UnprocessableEntityException('Invalid interest lookup');
     }
 
@@ -115,21 +171,26 @@ export class MateDiscoveryService {
     if (query.availableDate) {
       const date = parseDate(query.availableDate);
       const today = Temporal.Now.zonedDateTimeISO(TIMEZONE).toPlainDate();
-      if (Temporal.PlainDate.compare(date.toZonedDateTimeISO(TIMEZONE).toPlainDate(), today) < 0) {
-        throw new UnprocessableEntityException('availableDate cannot be in the past');
+      if (
+        Temporal.PlainDate.compare(
+          date.toZonedDateTimeISO(TIMEZONE).toPlainDate(),
+          today,
+        ) < 0
+      ) {
+        throw new UnprocessableEntityException(
+          'availableDate cannot be in the past',
+        );
       }
       const [availability, bookings] = await Promise.all([
-        rowsByIds(
-          tables.MateAvailability,
-          'mateId',
-          mateIds,
-          (row: any) => row.dayOfWeek.eq(date.toZonedDateTimeISO(TIMEZONE).dayOfWeek),
+        rowsByIds(tables.MateAvailability, 'mateId', mateIds, (row: any) =>
+          row.dayOfWeek.eq(date.toZonedDateTimeISO(TIMEZONE).dayOfWeek),
         ),
         rowsByIds(
           tables.Booking,
           'mateId',
           mateIds,
-          (row: any) => row.date.eq(date) && row.status.in(['pending', 'confirmed']),
+          (row: any) =>
+            row.date.eq(date) && row.status.in(['pending', 'confirmed']),
         ),
       ]);
       const bookingsByMate = this.groupRows(
@@ -157,22 +218,52 @@ export class MateDiscoveryService {
         return (
           isPublicMateOwner(user) &&
           (!query.q ||
-            user.name.toLocaleLowerCase().includes(query.q.toLocaleLowerCase()) ||
+            user.name
+              .toLocaleLowerCase()
+              .includes(query.q.toLocaleLowerCase()) ||
             mate.bio?.toLocaleLowerCase().includes(query.q.toLocaleLowerCase()))
         );
       })
-      .filter((mate) => query.provinceId === undefined || mate.provinceId === query.provinceId)
-      .filter((mate) => query.districtId === undefined || mate.districtId === query.districtId)
-      .filter((mate) => query.minRate === undefined || Number(mate.hourlyRate) >= Number(query.minRate))
-      .filter((mate) => query.maxRate === undefined || Number(mate.hourlyRate) <= Number(query.maxRate))
-      .filter((mate) => query.activityIds.every((id) => activityIdsByMate.get(mate.id)?.has(id)))
-      .filter((mate) => query.interestIds.every((id) => interestIdsByMate.get(mate.id)?.has(id)))
-      .filter((mate) => availableMateIds === undefined || availableMateIds.has(mate.id))
+      .filter(
+        (mate) =>
+          query.provinceId === undefined ||
+          mate.provinceId === query.provinceId,
+      )
+      .filter(
+        (mate) =>
+          query.districtId === undefined ||
+          mate.districtId === query.districtId,
+      )
+      .filter(
+        (mate) =>
+          query.minRate === undefined ||
+          Number(mate.hourlyRate) >= Number(query.minRate),
+      )
+      .filter(
+        (mate) =>
+          query.maxRate === undefined ||
+          Number(mate.hourlyRate) <= Number(query.maxRate),
+      )
+      .filter((mate) =>
+        query.activityIds.every((id) =>
+          activityIdsByMate.get(mate.id)?.has(id),
+        ),
+      )
+      .filter((mate) =>
+        query.interestIds.every((id) =>
+          interestIdsByMate.get(mate.id)?.has(id),
+        ),
+      )
+      .filter(
+        (mate) =>
+          availableMateIds === undefined || availableMateIds.has(mate.id),
+      )
       .map((mate) => {
         const user = usersById.get(mate.userId);
         const province = provincesById.get(mate.provinceId);
         const district = districtsById.get(mate.districtId);
-        if (!user || !province || !district) throw new Error(`Incomplete mate relation for ${mate.id}`);
+        if (!user || !province || !district)
+          throw new Error(`Incomplete mate relation for ${mate.id}`);
         const reviewAggregate = reviewAggregates.get(mate.id);
         const rating = reviewAggregate
           ? Number((reviewAggregate.sum / reviewAggregate.count).toFixed(1))
@@ -192,9 +283,10 @@ export class MateDiscoveryService {
         };
         return { item, createdAt: toEpochMillis(mate.createdAt), rating };
       })
-      .filter(({ rating }) =>
-        query.minRating === undefined ||
-        (rating === null ? query.minRating === 0 : rating >= query.minRating),
+      .filter(
+        ({ rating }) =>
+          query.minRating === undefined ||
+          (rating === null ? query.minRating === 0 : rating >= query.minRating),
       );
 
     rows.sort((left, right) => {
@@ -227,7 +319,9 @@ export class MateDiscoveryService {
       items: pageRows.map(({ item }) => ({
         ...item,
         photoUrl:
-          photosByMate.get(item.id)?.sort((left, right) => left.sortOrder - right.sortOrder)[0]?.url ??
+          photosByMate
+            .get(item.id)
+            ?.sort((left, right) => left.sortOrder - right.sortOrder)[0]?.url ??
           mates.find((mate) => mate.id === item.id)?.profileImageUrl ??
           null,
       })),
@@ -255,13 +349,21 @@ export class MateDiscoveryService {
     }
 
     const query: any = model.where((row: any) => row.mateId.in(mateIds));
-    if (typeof query.groupBy === 'function' && typeof query.aggregate === 'function') {
-      const grouped = await query.groupBy('mateId').aggregate((aggregate: any) => ({
-        count: aggregate.count(),
-        sum: aggregate.sum('rating'),
-      }));
+    if (
+      typeof query.groupBy === 'function' &&
+      typeof query.aggregate === 'function'
+    ) {
+      const grouped = await query
+        .groupBy('mateId')
+        .aggregate((aggregate: any) => ({
+          count: aggregate.count(),
+          sum: aggregate.sum('rating'),
+        }));
       for (const row of grouped) {
-        aggregates.set(row.mateId, { count: Number(row.count), sum: Number(row.sum ?? 0) });
+        aggregates.set(row.mateId, {
+          count: Number(row.count),
+          sum: Number(row.sum ?? 0),
+        });
       }
       return aggregates;
     }
@@ -276,7 +378,11 @@ export class MateDiscoveryService {
     return aggregates;
   }
 
-  private groupIds(rows: any[], groupField: string, valueField: string): Map<number, Set<number>> {
+  private groupIds(
+    rows: any[],
+    groupField: string,
+    valueField: string,
+  ): Map<number, Set<number>> {
     const grouped = new Map<number, Set<number>>();
     for (const row of rows) {
       const ids = grouped.get(row[groupField]) ?? new Set<number>();

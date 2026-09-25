@@ -1,6 +1,11 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
-import { averageRating, modelRows, rowsByIds, type DiscoveryDatabase } from '../discovery/mate-discovery.shared.js';
+import {
+  averageRating,
+  modelRows,
+  rowsByIds,
+  type DiscoveryDatabase,
+} from '../discovery/mate-discovery.shared.js';
 import { requirePublicMate } from '../internal/mate-visibility.js';
 
 export interface PublicMateDetail {
@@ -23,31 +28,50 @@ export interface PublicMateDetail {
 
 @Injectable()
 export class MateDetailService {
-  constructor(@Inject(MATES_DATABASE_TOKEN) private readonly database: DiscoveryDatabase) {}
+  constructor(
+    @Inject(MATES_DATABASE_TOKEN) private readonly database: DiscoveryDatabase,
+  ) {}
 
   async findOne(mateId: number): Promise<PublicMateDetail> {
     const tables = this.database.orm.public;
     const { mate, owner } = await requirePublicMate(this.database, mateId);
 
-    const [province, district, activityLinks, interestLinks, photos, reviews] = await Promise.all([
-      modelRows(tables.Province, { id: mate.provinceId }).then((rows) => rows[0]),
-      modelRows(tables.District, { id: mate.districtId }).then((rows) => rows[0]),
-      modelRows(tables.MateActivity, { mateId }),
-      modelRows(tables.MateInterest, { mateId }),
-      modelRows(tables.MatePhoto, { mateId }),
-      modelRows(tables.Review, { mateId }),
-    ]);
+    const [province, district, activityLinks, interestLinks, photos, reviews] =
+      await Promise.all([
+        modelRows(tables.Province, { id: mate.provinceId }).then(
+          (rows) => rows[0],
+        ),
+        modelRows(tables.District, { id: mate.districtId }).then(
+          (rows) => rows[0],
+        ),
+        modelRows(tables.MateActivity, { mateId }),
+        modelRows(tables.MateInterest, { mateId }),
+        modelRows(tables.MatePhoto, { mateId }),
+        modelRows(tables.Review, { mateId }),
+      ]);
 
     if (!province || !district) {
       throw new NotFoundException('Mate not found');
     }
 
     const [activities, interests] = await Promise.all([
-      rowsByIds(tables.Activity, 'id', activityLinks.map((link) => link.activityId)),
-      rowsByIds(tables.Interest, 'id', interestLinks.map((link) => link.interestId)),
+      rowsByIds(
+        tables.Activity,
+        'id',
+        activityLinks.map((link) => link.activityId),
+      ),
+      rowsByIds(
+        tables.Interest,
+        'id',
+        interestLinks.map((link) => link.interestId),
+      ),
     ]);
-    const activityById = new Map(activities.map((activity) => [activity.id, activity]));
-    const interestById = new Map(interests.map((interest) => [interest.id, interest]));
+    const activityById = new Map(
+      activities.map((activity) => [activity.id, activity]),
+    );
+    const interestById = new Map(
+      interests.map((interest) => [interest.id, interest]),
+    );
 
     return {
       id: mate.id,
@@ -59,15 +83,25 @@ export class MateDetailService {
       district: { id: district.id, name: district.name },
       activities: activityLinks
         .map((link) => activityById.get(link.activityId))
-        .filter((activity): activity is { id: number; name: string } => activity !== undefined)
+        .filter(
+          (activity): activity is { id: number; name: string } =>
+            activity !== undefined,
+        )
         .map(({ id, name }) => ({ id, name })),
       interests: interestLinks
         .map((link) => interestById.get(link.interestId))
-        .filter((interest): interest is { id: number; name: string } => interest !== undefined)
+        .filter(
+          (interest): interest is { id: number; name: string } =>
+            interest !== undefined,
+        )
         .map(({ id, name }) => ({ id, name })),
       photos: photos
         .sort((left, right) => left.sortOrder - right.sortOrder)
-        .map((photo) => ({ id: photo.id, url: photo.url, sortOrder: photo.sortOrder })),
+        .map((photo) => ({
+          id: photo.id,
+          url: photo.url,
+          sortOrder: photo.sortOrder,
+        })),
       avgRating: averageRating(reviews),
       reviewCount: reviews.length,
       isActive: true,

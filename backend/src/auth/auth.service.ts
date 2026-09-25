@@ -1,311 +1,396 @@
 import {
-	ConflictException,
-	ForbiddenException,
-	Injectable,
-	NotFoundException,
-	UnauthorizedException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Temporal } from '@js-temporal/polyfill';
 import { createHash, randomUUID } from 'node:crypto';
 import { db } from '../prisma/db.js';
-import type { AuthUser } from '../shared/types/auth-user.js';
 import { PasswordHashService } from '../shared/security/password/password-hash.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
+import type { AuthUser } from '../shared/types/auth-user.js';
 
 type AuthTokenPayload = {
-	sub: number;
-	role: string;
-	jti: string;
-	type: 'access' | 'refresh';
+  sub: number;
+  role: string;
+  jti: string;
+  type: 'access' | 'refresh';
+};
+
+type SocketTicketPayload = {
+  sub: number;
+  role?: string;
+  jti: string;
+  type: 'socket_ticket';
 };
 
 type TokenStorage = Pick<typeof db, 'orm'>;
 
 const ACCESS_TOKEN_TTL = process.env['JWT_ACCESS_TTL'] ?? '15m';
 const REFRESH_TOKEN_TTL = '30d';
+const configuredSocketTicketTtl = Number(
+  process.env['SOCKET_TICKET_TTL_SECONDS'] ?? 60,
+);
+const SOCKET_TICKET_TTL_SECONDS = Number.isFinite(configuredSocketTicketTtl)
+  ? Math.max(10, Math.floor(configuredSocketTicketTtl))
+  : 60;
 
 @Injectable()
 export class AuthService {
-	constructor(
-		private readonly jwtService: JwtService,
-		private readonly passwordService: PasswordHashService,
-	) {}
+  /**
+   * A ticket is deliberately registered before it is handed to the browser,
+   * then atomically removed by `consumeSocketTicket`. A process restart also
+   * invalidates outstanding tickets, which is safe because clients retry by
+   * requesting a fresh ticket through the authenticated BFF route.
+   */
+  private readonly socketTickets = new Map<string, number>();
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly passwordService: PasswordHashService,
+  ) {}
 
-	async register(dto: RegisterDto) {
-		const email = dto.email.trim().toLowerCase();
-		const existingUser = await db.orm.public.User.where({ email }).first();
-		if (existingUser) {
-			throw new ConflictException('Email is already registered');
-		}
+  async register(dto: RegisterDto) {
+    const email = dto.email.trim().toLowerCase();
+    const existingUser = await db.orm.public.User.where({ email }).first();
+    if (existingUser) {
+      throw new ConflictException('Email is already registered');
+    }
 
-		const password = await this.passwordService.hash(dto.password);
-		let user: any;
-		try {
-			user = await db.orm.public.User.create({
-				name: dto.name,
-				email,
-				password,
-				role: dto.role,
-			});
-		} catch (error) {
-			if (isUniqueConstraintError(error)) {
-				throw new ConflictException('Email is already registered');
-			}
-			throw error;
-		}
+    const password = await this.passwordService.hash(dto.password);
+    let user: any;
+    try {
+      user = await db.orm.public.User.create({
+        name: dto.name,
+        email,
+        password,
+        role: dto.role,
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('Email is already registered');
+      }
+      throw error;
+    }
 
-		return {
-			status: 'success',
-			message: 'Account created',
-			data: { user: this.toPublicUser(user) },
-		};
-	}
+    return {
+      status: 'success',
+      message: 'Account created',
+      data: { user: this.toPublicUser(user) },
+    };
+  }
 
-	async login(dto: LoginDto) {
-		const user = await db.orm.public.User.where({ email: dto.email.trim().toLowerCase() }).first();
-		if (!user || !(await this.passwordService.verify(dto.password, user.password))) {
-			throw new UnauthorizedException('Invalid email or password');
-		}
+  async login(dto: LoginDto) {
+    const user = await db.orm.public.User.where({
+      email: dto.email.trim().toLowerCase(),
+    }).first();
+    if (
+      !user ||
+      !(await this.passwordService.verify(dto.password, user.password))
+    ) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
 
-		if (user.isBanned) {
-			throw new ForbiddenException('Account is banned');
-		}
-		if (!user.isActive) {
-			throw new ForbiddenException('Account is inactive');
-		}
+    if (user.isBanned) {
+      throw new ForbiddenException('Account is banned');
+    }
+    if (!user.isActive) {
+      throw new ForbiddenException('Account is inactive');
+    }
 
-		const tokens = await this.issueTokenPair(user.id, user.role);
+    const tokens = await this.issueTokenPair(user.id, user.role);
 
-		return {
-			status: 'success',
-			message: 'Logged in',
-			data: {
-				...tokens,
-				user: {
-					id: user.id,
-					name: user.name,
-					role: user.role,
-				},
-			},
-		};
-	}
+    return {
+      status: 'success',
+      message: 'Logged in',
+      data: {
+        ...tokens,
+        user: {
+          id: user.id,
+          name: user.name,
+          role: user.role,
+        },
+      },
+    };
+  }
 
-	async refresh(refreshToken: string) {
-		const payload = await this.verifyRefreshToken(refreshToken);
-		const tokens = await db.transaction(async (tx) => {
-			const storedToken = await this.findStoredRefreshToken(tx, payload.jti);
+  async refresh(refreshToken: string) {
+    const payload = await this.verifyRefreshToken(refreshToken);
+    const tokens = await db.transaction(async (tx) => {
+      const storedToken = await this.findStoredRefreshToken(tx, payload.jti);
 
-			if (
-				!storedToken ||
-				!this.isRefreshTokenUsable(storedToken, refreshToken, payload.sub)
-			) {
-				throw new UnauthorizedException('Invalid refresh token');
-			}
+      if (
+        !storedToken ||
+        !this.isRefreshTokenUsable(storedToken, refreshToken, payload.sub)
+      ) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
 
-			const user = await tx.orm.public.User.where({ id: storedToken.userId }).first();
-			if (!user || user.isBanned) {
-				throw new ForbiddenException('Account is banned');
-			}
-			if (!user.isActive) {
-				throw new ForbiddenException('Account is inactive');
-			}
+      const user = await tx.orm.public.User.where({
+        id: storedToken.userId,
+      }).first();
+      if (!user || user.isBanned) {
+        throw new ForbiddenException('Account is banned');
+      }
+      if (!user.isActive) {
+        throw new ForbiddenException('Account is inactive');
+      }
 
-			const newJti = randomUUID();
-			if ((await this.revokeRefreshToken(tx, payload.jti, newJti)) !== 1) {
-				throw new UnauthorizedException('Invalid refresh token');
-			}
+      const newJti = randomUUID();
+      if ((await this.revokeRefreshToken(tx, payload.jti, newJti)) !== 1) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
 
-			const rotatedTokens = await this.createTokenPair(
-				tx,
-				storedToken.userId,
-				payload.role,
-				newJti,
-			);
+      const rotatedTokens = await this.createTokenPair(
+        tx,
+        storedToken.userId,
+        payload.role,
+        newJti,
+      );
 
-			return rotatedTokens;
-		});
+      return rotatedTokens;
+    });
 
-		return {
-			status: 'success',
-			message: 'Token refreshed',
-			data: tokens,
-		};
-	}
+    return {
+      status: 'success',
+      message: 'Token refreshed',
+      data: tokens,
+    };
+  }
 
-	async logout(refreshToken: string) {
-		let payload: AuthTokenPayload | undefined;
-		try {
-			payload = await this.verifyRefreshToken(refreshToken);
-		} catch {
-			payload = undefined;
-		}
+  async logout(refreshToken: string) {
+    let payload: AuthTokenPayload | undefined;
+    try {
+      payload = await this.verifyRefreshToken(refreshToken);
+    } catch {
+      payload = undefined;
+    }
 
-		if (payload) {
-			await this.revokeRefreshToken(db, payload.jti);
-		}
+    if (payload) {
+      await this.revokeRefreshToken(db, payload.jti);
+    }
 
-		return {
-			status: 'success',
-			message: 'Logged out',
-			data: null,
-		};
-	}
+    return {
+      status: 'success',
+      message: 'Logged out',
+      data: null,
+    };
+  }
 
-	async me(userId: number | undefined) {
-		if (!Number.isInteger(userId) || (userId ?? 0) <= 0) {
-			throw new UnauthorizedException('Authenticated user is required');
-		}
-		const user = await db.orm.public.User.where({ id: userId }).first();
-		if (!user) throw new NotFoundException('User not found');
-		return {
-			status: 'success' as const,
-			message: 'Current user retrieved',
-			data: { user: this.toPublicUser(user) },
-		};
-	}
+  async me(userId: number | undefined) {
+    if (!Number.isInteger(userId) || (userId ?? 0) <= 0) {
+      throw new UnauthorizedException('Authenticated user is required');
+    }
+    const user = await db.orm.public.User.where({ id: userId }).first();
+    if (!user) throw new NotFoundException('User not found');
+    return {
+      status: 'success' as const,
+      message: 'Current user retrieved',
+      data: { user: this.toPublicUser(user) },
+    };
+  }
 
-	async createSocketTicket(user: AuthUser) {
-		if (!Number.isInteger(user.id) || user.id <= 0 || !user.role) {
-			throw new UnauthorizedException('Authenticated user is required');
-		}
-		const ticket = await this.jwtService.signAsync(
-			{
-				sub: user.id,
-				role: user.role,
-				jti: randomUUID(),
-				type: 'socket_ticket',
-			},
-			{ secret: this.accessSecret, expiresIn: '30s' },
-		);
-		return { status: 'success' as const, message: 'Socket ticket created', data: { ticket } };
-	}
+  async createSocketTicket(
+    user: AuthUser,
+  ): Promise<{ status: 'success'; message: string; data: { ticket: string } }> {
+    const jti = randomUUID();
+    const expiresAt = Date.now() + SOCKET_TICKET_TTL_SECONDS * 1000;
+    this.pruneExpiredSocketTickets();
+    this.socketTickets.set(jti, expiresAt);
+    const ticket = await this.jwtService.signAsync(
+      { sub: user.id, role: user.role, jti, type: 'socket_ticket' },
+      {
+        secret: this.socketTicketSecret,
+        expiresIn: `${SOCKET_TICKET_TTL_SECONDS}s`,
+      },
+    );
+    return {
+      status: 'success',
+      message: 'Socket ticket created',
+      data: { ticket },
+    };
+  }
 
-	private readonly accessSecret = process.env['JWT_ACCESS_SECRET'];
+  /** Returns the authenticated principal once, deleting the ticket first. */
+  async consumeSocketTicket(ticket: string): Promise<AuthUser> {
+    let payload: SocketTicketPayload;
+    try {
+      payload = await this.jwtService.verifyAsync<SocketTicketPayload>(ticket, {
+        secret: this.socketTicketSecret,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid socket ticket');
+    }
+    if (
+      payload.type !== 'socket_ticket' ||
+      !payload.jti ||
+      !Number.isInteger(payload.sub)
+    ) {
+      throw new UnauthorizedException('Invalid socket ticket');
+    }
+    const expiresAt = this.socketTickets.get(payload.jti);
+    this.socketTickets.delete(payload.jti);
+    if (!expiresAt || expiresAt <= Date.now()) {
+      throw new UnauthorizedException('Socket ticket expired or already used');
+    }
+    return { id: payload.sub, role: payload.role as AuthUser['role'] };
+  }
 
-	private readonly refreshSecret = process.env['JWT_REFRESH_SECRET'];
+  private readonly accessSecret = process.env['JWT_ACCESS_SECRET'];
 
-	private async issueTokenPair(userId: number, role: string) {
-		const accessJti = randomUUID();
-		const refreshJti = randomUUID();
-		return db.transaction((tx) =>
-			this.createTokenPair(tx, userId, role, refreshJti, accessJti),
-		);
-	}
+  private readonly refreshSecret = process.env['JWT_REFRESH_SECRET'];
 
-	private async createTokenPair(
-		tx: TokenStorage,
-		userId: number,
-		role: string,
-		refreshJti: string,
-		accessJti = randomUUID(),
-	) {
-		const accessToken = await this.jwtService.signAsync(
-			{
-				sub: userId,
-				role,
-				jti: accessJti,
-				type: 'access',
-			},
-			{
-				secret: this.accessSecret,
-				expiresIn: ACCESS_TOKEN_TTL as any,
-			},
-		);
-		const refreshToken = await this.jwtService.signAsync(
-			{
-				sub: userId,
-				role,
-				jti: refreshJti,
-				type: 'refresh',
-			},
-			{
-				secret: this.refreshSecret,
-				expiresIn: REFRESH_TOKEN_TTL,
-			},
-		);
+  private readonly socketTicketSecret =
+    process.env['JWT_SOCKET_TICKET_SECRET'] ?? this.accessSecret;
 
-		await this.saveRefreshToken(tx, userId, refreshToken, refreshJti);
+  private pruneExpiredSocketTickets(now = Date.now()) {
+    for (const [jti, expiresAt] of this.socketTickets) {
+      if (expiresAt <= now) this.socketTickets.delete(jti);
+    }
+  }
 
-		return { accessToken, refreshToken };
-	}
+  private async issueTokenPair(userId: number, role: string) {
+    const accessJti = randomUUID();
+    const refreshJti = randomUUID();
+    return db.transaction((tx) =>
+      this.createTokenPair(tx, userId, role, refreshJti, accessJti),
+    );
+  }
 
-	private async verifyRefreshToken(token: string) {
-		try {
-			const payload = await this.jwtService.verifyAsync<AuthTokenPayload>(token, {
-				secret: this.refreshSecret,
-			});
-			if (payload.type !== 'refresh' || !payload.jti) {
-				throw new Error('Invalid token type');
-			}
-			return payload;
-		} catch {
-			throw new UnauthorizedException('Invalid refresh token');
-		}
-	}
+  private async createTokenPair(
+    tx: TokenStorage,
+    userId: number,
+    role: string,
+    refreshJti: string,
+    accessJti = randomUUID(),
+  ) {
+    const accessToken = await this.jwtService.signAsync(
+      {
+        sub: userId,
+        role,
+        jti: accessJti,
+        type: 'access',
+      },
+      {
+        secret: this.accessSecret,
+        expiresIn: ACCESS_TOKEN_TTL as any,
+      },
+    );
+    const refreshToken = await this.jwtService.signAsync(
+      {
+        sub: userId,
+        role,
+        jti: refreshJti,
+        type: 'refresh',
+      },
+      {
+        secret: this.refreshSecret,
+        expiresIn: REFRESH_TOKEN_TTL,
+      },
+    );
 
-	private hashToken(token: string) {
-		return createHash('sha256').update(token).digest('hex');
-	}
+    await this.saveRefreshToken(tx, userId, refreshToken, refreshJti);
 
-	private findStoredRefreshToken(tx: TokenStorage, jti: string) {
-		return tx.orm.public.RefreshToken.where({ jti }).first();
-	}
+    return { accessToken, refreshToken };
+  }
 
-	private isRefreshTokenUsable(
-		storedToken: {
-			tokenHash: string;
-			revokedAt: Temporal.Instant | null;
-			expiresAt: Temporal.Instant;
-			userId: number;
-		},
-		rawToken: string,
-		userId: number,
-	) {
-		return (
-			storedToken.tokenHash === this.hashToken(rawToken) &&
-			!storedToken.revokedAt &&
-			Temporal.Instant.compare(storedToken.expiresAt, Temporal.Now.instant()) > 0 &&
-			storedToken.userId === userId
-		);
-	}
+  private async verifyRefreshToken(token: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync<AuthTokenPayload>(
+        token,
+        {
+          secret: this.refreshSecret,
+        },
+      );
+      if (payload.type !== 'refresh' || !payload.jti) {
+        throw new Error('Invalid token type');
+      }
+      return payload;
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
 
-	private saveRefreshToken(
-		tx: TokenStorage,
-		userId: number,
-		refreshToken: string,
-		jti: string,
-	) {
-		return tx.orm.public.RefreshToken.create({
-			userId,
-			tokenHash: this.hashToken(refreshToken),
-			jti,
-			expiresAt: Temporal.Now.instant().add({
-				seconds: 30 * 24 * 60 * 60,
-			}),
-		});
-	}
+  private hashToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
 
-	private revokeRefreshToken(tx: TokenStorage, jti: string, replacedByJti?: string) {
-		return tx.orm.public.RefreshToken
-			.where({ jti, revokedAt: null })
-			.updateAndCount({
-				revokedAt: Temporal.Now.instant(),
-				replacedByJti,
-			});
-	}
+  private findStoredRefreshToken(tx: TokenStorage, jti: string) {
+    return tx.orm.public.RefreshToken.where({ jti }).first();
+  }
 
-	private toPublicUser(user: { id: number; name: string; email: string; role: string }) {
-		return {
-			id: user.id,
-			name: user.name,
-			email: user.email,
-			role: user.role,
-		};
-	}
+  private isRefreshTokenUsable(
+    storedToken: {
+      tokenHash: string;
+      revokedAt: Temporal.Instant | null;
+      expiresAt: Temporal.Instant;
+      userId: number;
+    },
+    rawToken: string,
+    userId: number,
+  ) {
+    return (
+      storedToken.tokenHash === this.hashToken(rawToken) &&
+      !storedToken.revokedAt &&
+      Temporal.Instant.compare(storedToken.expiresAt, Temporal.Now.instant()) >
+        0 &&
+      storedToken.userId === userId
+    );
+  }
+
+  private saveRefreshToken(
+    tx: TokenStorage,
+    userId: number,
+    refreshToken: string,
+    jti: string,
+  ) {
+    return tx.orm.public.RefreshToken.create({
+      userId,
+      tokenHash: this.hashToken(refreshToken),
+      jti,
+      expiresAt: Temporal.Now.instant().add({
+        seconds: 30 * 24 * 60 * 60,
+      }),
+    });
+  }
+
+  private revokeRefreshToken(
+    tx: TokenStorage,
+    jti: string,
+    replacedByJti?: string,
+  ) {
+    return tx.orm.public.RefreshToken.where({
+      jti,
+      revokedAt: null,
+    }).updateAndCount({
+      revokedAt: Temporal.Now.instant(),
+      replacedByJti,
+    });
+  }
+
+  private toPublicUser(user: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+  }) {
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+  }
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
-	return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
 }

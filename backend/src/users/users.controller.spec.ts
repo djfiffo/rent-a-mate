@@ -30,7 +30,9 @@ describe('UsersController', () => {
     const service = { getProfile: vi.fn() } as never;
     const controller = new UsersController(service);
 
-    await expect(controller.getProfile()).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(controller.getProfile()).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
     expect(service.getProfile).not.toHaveBeenCalled();
   });
 

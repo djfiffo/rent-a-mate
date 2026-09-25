@@ -1,5 +1,6 @@
-import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MessagesEvents } from '../messages/messages.events.js';
 import { ChatGateway } from './chat.gateway.js';
 import { WsJwtGuard } from './ws-jwt.guard.js';
 
@@ -33,7 +34,6 @@ describe('ChatGateway', () => {
   const user = { id: 7, role: 'renter' as const };
   let messagesService: {
     assertParticipant: ReturnType<typeof vi.fn>;
-    create: ReturnType<typeof vi.fn>;
     markRead: ReturnType<typeof vi.fn>;
   };
   let gateway: ChatGateway;
@@ -41,19 +41,31 @@ describe('ChatGateway', () => {
 
   beforeEach(() => {
     messagesService = {
-      assertParticipant: vi.fn().mockResolvedValue({ booking: {}, mate: {}, recipientId: 5 }),
-      create: vi.fn().mockResolvedValue(message),
+      assertParticipant: vi
+        .fn()
+        .mockResolvedValue({ booking: {}, mate: {}, recipientId: 5 }),
       markRead: vi.fn().mockResolvedValue({ updatedCount: 3 }),
     };
-    gateway = new ChatGateway(messagesService as never, {} as WsJwtGuard);
+    gateway = new ChatGateway(
+      messagesService as never,
+      {} as WsJwtGuard,
+      new MessagesEvents(),
+    );
     server = createServer();
     gateway.server = server as never;
   });
 
   describe('handleConnection', () => {
     it('attaches the authenticated user to client.data and does not reject', async () => {
-      const wsJwtGuard = { authenticate: vi.fn().mockResolvedValue(user), reject: vi.fn() };
-      gateway = new ChatGateway(messagesService as never, wsJwtGuard as never);
+      const wsJwtGuard = {
+        authenticate: vi.fn().mockResolvedValue(user),
+        reject: vi.fn(),
+      };
+      gateway = new ChatGateway(
+        messagesService as never,
+        wsJwtGuard as never,
+        new MessagesEvents(),
+      );
       const client = createSocket();
 
       await gateway.handleConnection(client as never);
@@ -64,7 +76,9 @@ describe('ChatGateway', () => {
 
     it('rejects the connection when authentication fails', async () => {
       const wsJwtGuard = {
-        authenticate: vi.fn().mockRejectedValue(new Error('Missing token')),
+        authenticate: vi
+          .fn()
+          .mockRejectedValue(new Error('Missing socket ticket')),
         reject: vi.fn(),
       };
       gateway = new ChatGateway(messagesService as never, wsJwtGuard as never);
@@ -72,7 +86,10 @@ describe('ChatGateway', () => {
 
       await gateway.handleConnection(client as never);
 
-      expect(wsJwtGuard.reject).toHaveBeenCalledWith(client, 'Missing token');
+      expect(wsJwtGuard.reject).toHaveBeenCalledWith(
+        client,
+        'Missing socket ticket',
+      );
       expect(client.data['user']).toBeUndefined();
     });
   });
@@ -81,7 +98,9 @@ describe('ChatGateway', () => {
     it('joins the booking room after a successful assertParticipant check', async () => {
       const client = createSocket({ user });
 
-      const ack = await gateway.handleJoinBooking(client as never, { bookingId: 2 });
+      const ack = await gateway.handleJoinBooking(client as never, {
+        bookingId: 2,
+      });
 
       expect(messagesService.assertParticipant).toHaveBeenCalledWith(user, 2);
       expect(client.join).toHaveBeenCalledWith('booking:2');
@@ -89,10 +108,14 @@ describe('ChatGateway', () => {
     });
 
     it('returns an ack error instead of throwing when the caller is not a participant', async () => {
-      messagesService.assertParticipant.mockRejectedValue(new NotFoundException('Booking not found'));
+      messagesService.assertParticipant.mockRejectedValue(
+        new NotFoundException('Booking not found'),
+      );
       const client = createSocket({ user });
 
-      const ack = await gateway.handleJoinBooking(client as never, { bookingId: 2 });
+      const ack = await gateway.handleJoinBooking(client as never, {
+        bookingId: 2,
+      });
 
       expect(ack).toEqual({ ok: false, error: 'Booking not found' });
       expect(client.join).not.toHaveBeenCalled();
@@ -111,26 +134,22 @@ describe('ChatGateway', () => {
     });
   });
 
-  describe('handleSendMessage', () => {
-    it('creates the message via MessagesService and broadcasts it to the whole room', async () => {
-      const client = createSocket({ user });
+  describe('message created events', () => {
+    it('broadcasts a committed REST message without writing it again', () => {
+      const events = new MessagesEvents();
+      gateway = new ChatGateway(messagesService as never, {} as never, events);
+      gateway.server = server as never;
+      gateway.onModuleInit();
 
-      const ack = await gateway.handleSendMessage(client as never, { bookingId: 2, content: 'Hello' });
+      events.publishCreated(message as never);
 
-      expect(messagesService.create).toHaveBeenCalledWith(user, 2, { content: 'Hello' });
       expect(server.to).toHaveBeenCalledWith('booking:2');
-      expect(server.to('booking:2').emit).toHaveBeenCalledWith('new_message', message);
-      expect(ack).toEqual({ ok: true, data: message });
-    });
-
-    it('returns an ack error (not a broadcast) when sending is not allowed', async () => {
-      messagesService.create.mockRejectedValue(new UnprocessableEntityException('MESSAGE_NOT_ALLOWED'));
-      const client = createSocket({ user });
-
-      const ack = await gateway.handleSendMessage(client as never, { bookingId: 2, content: 'Hello' });
-
-      expect(ack).toEqual({ ok: false, error: 'MESSAGE_NOT_ALLOWED' });
-      expect(server.to).not.toHaveBeenCalled();
+      expect(server.to('booking:2').emit).toHaveBeenCalledWith(
+        'new_message',
+        message,
+      );
+      expect(messagesService).not.toHaveProperty('create');
+      gateway.onModuleDestroy();
     });
   });
 
@@ -138,7 +157,10 @@ describe('ChatGateway', () => {
     it('broadcasts typing to everyone else in the room, not back to the sender', async () => {
       const client = createSocket({ user });
 
-      const ack = await gateway.handleTyping(client as never, { bookingId: 2, isTyping: true });
+      const ack = await gateway.handleTyping(client as never, {
+        bookingId: 2,
+        isTyping: true,
+      });
 
       expect(messagesService.assertParticipant).toHaveBeenCalledWith(user, 2);
       expect(client.to).toHaveBeenCalledWith('booking:2');
@@ -155,15 +177,20 @@ describe('ChatGateway', () => {
     it('marks messages read and broadcasts messages_read to the room', async () => {
       const client = createSocket({ user });
 
-      const ack = await gateway.handleMarkRead(client as never, { bookingId: 2 });
+      const ack = await gateway.handleMarkRead(client as never, {
+        bookingId: 2,
+      });
 
       expect(messagesService.markRead).toHaveBeenCalledWith(user, 2);
       expect(server.to).toHaveBeenCalledWith('booking:2');
-      expect(server.to('booking:2').emit).toHaveBeenCalledWith('messages_read', {
-        bookingId: 2,
-        readerId: 7,
-        updatedCount: 3,
-      });
+      expect(server.to('booking:2').emit).toHaveBeenCalledWith(
+        'messages_read',
+        {
+          bookingId: 2,
+          readerId: 7,
+          updatedCount: 3,
+        },
+      );
       expect(ack).toEqual({ ok: true, data: { updatedCount: 3 } });
     });
   });
@@ -172,10 +199,13 @@ describe('ChatGateway', () => {
     it('returns an ack error instead of throwing when client.data.user is missing', async () => {
       const client = createSocket();
 
-      const ack = await gateway.handleSendMessage(client as never, { bookingId: 2, content: 'Hello' });
+      const ack = await gateway.handleTyping(client as never, {
+        bookingId: 2,
+        isTyping: true,
+      });
 
       expect(ack).toEqual({ ok: false, error: 'Not authenticated' });
-      expect(messagesService.create).not.toHaveBeenCalled();
+      expect(messagesService.assertParticipant).not.toHaveBeenCalled();
     });
   });
 });

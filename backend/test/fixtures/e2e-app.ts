@@ -13,13 +13,22 @@ export type StripeEvent = {
 
 export class FakeStripeProvider {
   private sequence = 0;
-  readonly createdIntents: Array<{ params: Record<string, unknown>; options: Record<string, unknown> }> = [];
+  readonly createdIntents: Array<{
+    params: Record<string, unknown>;
+    options: Record<string, unknown>;
+  }> = [];
   readonly retrievedIntents: string[] = [];
-  readonly createdRefunds: Array<{ params: Record<string, unknown>; options: Record<string, unknown> }> = [];
+  readonly createdRefunds: Array<{
+    params: Record<string, unknown>;
+    options: Record<string, unknown>;
+  }> = [];
 
   readonly client = {
     paymentIntents: {
-      create: async (params: Record<string, unknown>, options: Record<string, unknown>) => {
+      create: async (
+        params: Record<string, unknown>,
+        options: Record<string, unknown>,
+      ) => {
         this.createdIntents.push({ params, options });
         const id = `pi_e2e_${++this.sequence}`;
         return { id, client_secret: `${id}_secret` };
@@ -30,7 +39,10 @@ export class FakeStripeProvider {
       },
     },
     refunds: {
-      create: async (params: { payment_intent: string }, options: Record<string, unknown>) => {
+      create: async (
+        params: { payment_intent: string },
+        options: Record<string, unknown>,
+      ) => {
         this.createdRefunds.push({ params, options });
         return { id: `re_${params.payment_intent}` };
       },
@@ -56,7 +68,9 @@ export class FakeStripeProvider {
   }
 }
 
-export async function createE2eApp(options: { listen?: boolean } = {}): Promise<{
+export async function createE2eApp(
+  options: { listen?: boolean } = {},
+): Promise<{
   app: INestApplication<App>;
   module: TestingModule;
   stripe: FakeStripeProvider;

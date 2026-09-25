@@ -1,19 +1,28 @@
 import type { db } from '../prisma/db.js';
-import type { NotificationCreateInput, NotificationRecord } from '../notifications/notifications.types.js';
+import type {
+  NotificationCreateInput,
+  NotificationRecord,
+} from '../notifications/notifications.types.js';
 
 export type MessageClient = typeof db.orm.public.Message;
 export type MessageFilter = Parameters<MessageClient['where']>[0];
 export type MessageQuery = ReturnType<MessageClient['where']>;
-export type MessageRecord = NonNullable<Awaited<ReturnType<MessageQuery['first']>>>;
+export type MessageRecord = NonNullable<
+  Awaited<ReturnType<MessageQuery['first']>>
+>;
 export type MessageCreateInput = Parameters<MessageClient['create']>[0];
 
 type BookingClient = typeof db.orm.public.Booking;
 type BookingQuery = ReturnType<BookingClient['where']>;
-export type BookingRecordForMessage = NonNullable<Awaited<ReturnType<BookingQuery['first']>>>;
+export type BookingRecordForMessage = NonNullable<
+  Awaited<ReturnType<BookingQuery['first']>>
+>;
 
 type MateClient = typeof db.orm.public.Mate;
 type MateQuery = ReturnType<MateClient['where']>;
-export type MateRecordForMessage = NonNullable<Awaited<ReturnType<MateQuery['first']>>>;
+export type MateRecordForMessage = NonNullable<
+  Awaited<ReturnType<MateQuery['first']>>
+>;
 
 /**
  * Structural shape shared by the top-level `db` client and the callback
@@ -72,4 +81,9 @@ export interface CreateMessageResult {
   content: MessageRecord['content'];
   readAt: MessageRecord['readAt'];
   createdAt: MessageRecord['createdAt'];
+}
+
+export interface CreateMessageOutcome {
+  message: CreateMessageResult;
+  created: boolean;
 }

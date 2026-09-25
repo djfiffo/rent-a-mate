@@ -2,7 +2,11 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Temporal } from '@js-temporal/polyfill';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotificationsService } from './notifications.service.js';
-import type { NotificationDatabase, NotificationFilter, NotificationRecord } from './notifications.types.js';
+import type {
+  NotificationDatabase,
+  NotificationFilter,
+  NotificationRecord,
+} from './notifications.types.js';
 
 const baseNotification: NotificationRecord = {
   id: 1,
@@ -18,10 +22,17 @@ function createFixture(seed: NotificationRecord[] = [baseNotification]) {
   const rows = seed.map((row) => ({ ...row }));
 
   const matches = (row: NotificationRecord, filters: NotificationFilter) =>
-    Object.entries(filters as Record<string, unknown>).every(([key, value]) => (row as never)[key] === value);
+    Object.entries(filters as Record<string, unknown>).every(
+      ([key, value]) => (row as never)[key] === value,
+    );
 
   const makeQuery = (filters: NotificationFilter) => ({
-    where: vi.fn((moreFilters: NotificationFilter) => makeQuery({ ...(filters as object), ...(moreFilters as object) } as NotificationFilter)),
+    where: vi.fn((moreFilters: NotificationFilter) =>
+      makeQuery({
+        ...(filters as object),
+        ...(moreFilters as object),
+      } as NotificationFilter),
+    ),
     first: vi.fn(async () => rows.find((row) => matches(row, filters)) ?? null),
     all: vi.fn(async () => rows.filter((row) => matches(row, filters))),
     update: vi.fn(async (data: Partial<NotificationRecord>) => {
@@ -52,7 +63,9 @@ function createFixture(seed: NotificationRecord[] = [baseNotification]) {
     return created;
   });
 
-  const database: NotificationDatabase = { orm: { public: { Notification: { where, create } as never } } };
+  const database: NotificationDatabase = {
+    orm: { public: { Notification: { where, create } as never } },
+  };
   return { service: new NotificationsService(database), where, create, rows };
 }
 
@@ -77,21 +90,39 @@ describe('NotificationsService', () => {
   });
 
   it('creates a notification through an externally supplied writer (e.g. a transaction)', async () => {
-    const create = vi.fn(async (data: Record<string, unknown>) => ({ ...baseNotification, ...data }) as NotificationRecord);
+    const create = vi.fn(
+      async (data: Record<string, unknown>) =>
+        ({ ...baseNotification, ...data }) as NotificationRecord,
+    );
     const writer = { orm: { public: { Notification: { create } } } };
 
-    await fixture.service.create({ userId: 9, type: 'booking_declined', message: 'Declined' }, writer);
+    await fixture.service.create(
+      { userId: 9, type: 'booking_declined', message: 'Declined' },
+      writer,
+    );
 
     expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 9, type: 'booking_declined', message: 'Declined' }),
+      expect.objectContaining({
+        userId: 9,
+        type: 'booking_declined',
+        message: 'Declined',
+      }),
     );
     expect(fixture.create).not.toHaveBeenCalled();
   });
 
   it('lists the current user notifications, newest first', async () => {
     fixture = createFixture([
-      { ...baseNotification, id: 1, createdAt: Temporal.Instant.from('2026-09-10T00:00:00.000Z') },
-      { ...baseNotification, id: 2, createdAt: Temporal.Instant.from('2026-09-11T00:00:00.000Z') },
+      {
+        ...baseNotification,
+        id: 1,
+        createdAt: Temporal.Instant.from('2026-09-10T00:00:00.000Z'),
+      },
+      {
+        ...baseNotification,
+        id: 2,
+        createdAt: Temporal.Instant.from('2026-09-11T00:00:00.000Z'),
+      },
     ]);
 
     const notifications = await fixture.service.findMine(7);
@@ -120,11 +151,15 @@ describe('NotificationsService', () => {
   });
 
   it('throws NotFoundException when the notification does not exist', async () => {
-    await expect(fixture.service.markRead(7, 999)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(fixture.service.markRead(7, 999)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('throws ForbiddenException when marking another user notification as read', async () => {
-    await expect(fixture.service.markRead(999, 1)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(fixture.service.markRead(999, 1)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it('marks all of the current user unread notifications as read', async () => {
@@ -136,6 +171,8 @@ describe('NotificationsService', () => {
 
     const result = await fixture.service.markAllRead(7);
     expect(result).toEqual({ updated: 2 });
-    expect(fixture.rows.filter((row) => row.userId === 7 && row.isRead)).toHaveLength(2);
+    expect(
+      fixture.rows.filter((row) => row.userId === 7 && row.isRead),
+    ).toHaveLength(2);
   });
 });

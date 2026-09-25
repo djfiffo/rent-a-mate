@@ -1,24 +1,15 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import type { Socket } from 'socket.io';
 import { db } from '../prisma/db.js';
+import { AuthService } from '../auth/auth.service.js';
 import type { ChatSocketData } from './chat.types.js';
-
-type AccessTokenPayload = {
-  sub: number;
-  role: string;
-  type: 'socket_ticket';
-  jti: string;
-  exp: number;
-};
 
 /**
  * Authenticates a socket during `handleConnection`, mirroring
  * `JwtStrategy.validate()` (see auth/jwt.strategy.ts) rule-for-rule: the
- * same access-token type check and the same isBanned/isActive gate — just
- * reading the token from `handshake.auth.token` instead of an
- * `Authorization` header, since HTTP's `PassportStrategy`/`ExtractJwt`
- * machinery only understands HTTP requests, not the WebSocket handshake.
+ * same isBanned/isActive gate, after consuming a short-lived single-use
+ * ticket. The browser receives that ticket from the same-origin BFF route;
+ * it never reads or sends the access JWT over the socket.
  *
  * This is deliberately NOT a NestJS `CanActivate` guard bound with
  * `@UseGuards` per-message: authentication should happen exactly once, when
@@ -27,9 +18,8 @@ type AccessTokenPayload = {
 @Injectable()
 export class WsJwtGuard {
   private readonly logger = new Logger(WsJwtGuard.name);
-  private readonly consumedTickets = new Map<string, number>();
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly authService: AuthService) {}
 
   /**
    * Verifies `client`'s handshake token and returns the authenticated user,
@@ -37,31 +27,13 @@ export class WsJwtGuard {
    * or the account is banned/inactive.
    */
   async authenticate(client: Socket): Promise<ChatSocketData['user']> {
-    const ticket = this.extractTicket(client);
-    if (!ticket) {
+    const token = this.extractToken(client);
+    if (!token) {
       throw new UnauthorizedException('Missing socket ticket');
     }
 
-    let payload: AccessTokenPayload;
-    try {
-      payload = await this.jwtService.verifyAsync<AccessTokenPayload>(ticket);
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-
-    if (payload.type !== 'socket_ticket' || !payload.jti || !payload.exp) {
-      throw new UnauthorizedException('Invalid socket ticket');
-    }
-    const now = Math.floor(Date.now() / 1000);
-    for (const [jti, expiresAt] of this.consumedTickets) {
-      if (expiresAt <= now) this.consumedTickets.delete(jti);
-    }
-    if (this.consumedTickets.has(payload.jti)) {
-      throw new UnauthorizedException('Socket ticket has already been used');
-    }
-    this.consumedTickets.set(payload.jti, payload.exp);
-
-    const user = await db.orm.public.User.where({ id: payload.sub }).first();
+    const principal = await this.authService.consumeSocketTicket(token);
+    const user = await db.orm.public.User.where({ id: principal.id }).first();
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -72,7 +44,10 @@ export class WsJwtGuard {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    return { id: payload.sub, role: user.role as ChatSocketData['user']['role'] };
+    return {
+      id: principal.id,
+      role: user.role as ChatSocketData['user']['role'],
+    };
   }
 
   /** Disconnects `client` after emitting an `error` event with `message`. */
@@ -82,10 +57,10 @@ export class WsJwtGuard {
     client.disconnect(true);
   }
 
-  private extractTicket(client: Socket): string | undefined {
-    const ticket = client.handshake.auth?.['ticket'];
-    if (typeof ticket === 'string' && ticket.length > 0) {
-      return ticket;
+  private extractToken(client: Socket): string | undefined {
+    const token = client.handshake.auth?.['ticket'];
+    if (typeof token === 'string' && token.length > 0) {
+      return token;
     }
     return undefined;
   }

@@ -7,11 +7,18 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
+import {
+  successResponse,
+  type ApiResponse,
+} from '../shared/http/api-response.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import type { SafeUser } from './users.types.js';
 import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
-import { ChangeEmailDto, ChangePasswordDto, UpdateProfileDto } from './dto/index.js';
+import {
+  ChangeEmailDto,
+  ChangePasswordDto,
+  UpdateProfileDto,
+} from './dto/index.js';
 import { UsersService } from './users.service.js';
 
 @Controller('users/me')
@@ -20,8 +27,13 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  async getProfile(@CurrentUser() user?: AuthUser): Promise<ApiResponse<SafeUser>> {
-    return successResponse('Profile retrieved', await this.usersService.getProfile(this.requireUserId(user)));
+  async getProfile(
+    @CurrentUser() user?: AuthUser,
+  ): Promise<ApiResponse<SafeUser>> {
+    return successResponse(
+      'Profile retrieved',
+      await this.usersService.getProfile(this.requireUserId(user)),
+    );
   }
 
   @Patch()
@@ -29,7 +41,10 @@ export class UsersController {
     @CurrentUser() user: AuthUser | undefined,
     @Body() dto: UpdateProfileDto,
   ): Promise<ApiResponse<SafeUser>> {
-    return successResponse('Profile updated', await this.usersService.updateProfile(this.requireUserId(user), dto));
+    return successResponse(
+      'Profile updated',
+      await this.usersService.updateProfile(this.requireUserId(user), dto),
+    );
   }
 
   @Patch('email')
@@ -37,7 +52,10 @@ export class UsersController {
     @CurrentUser() user: AuthUser | undefined,
     @Body() dto: ChangeEmailDto,
   ): Promise<ApiResponse<SafeUser>> {
-    return successResponse('Email updated', await this.usersService.changeEmail(this.requireUserId(user), dto));
+    return successResponse(
+      'Email updated',
+      await this.usersService.changeEmail(this.requireUserId(user), dto),
+    );
   }
 
   @Patch('password')
@@ -45,7 +63,10 @@ export class UsersController {
     @CurrentUser() user: AuthUser | undefined,
     @Body() dto: ChangePasswordDto,
   ): Promise<ApiResponse<SafeUser>> {
-    return successResponse('Password updated', await this.usersService.changePassword(this.requireUserId(user), dto));
+    return successResponse(
+      'Password updated',
+      await this.usersService.changePassword(this.requireUserId(user), dto),
+    );
   }
 
   private requireUserId(user?: AuthUser): number {

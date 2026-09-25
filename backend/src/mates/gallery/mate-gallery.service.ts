@@ -7,9 +7,20 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
-import type { MateDatabase, MatePhotoRecord, MateRecord } from '../internal/mates.types.js';
-import { CreateMatePhotoDto, UploadMatePhotoDto } from './dto/create-mate-photo.dto.js';
-import { MATE_STORAGE_TOKEN, type MateStorageProvider, type MateUpload } from './mate-storage.js';
+import type {
+  MateDatabase,
+  MatePhotoRecord,
+  MateRecord,
+} from '../internal/mates.types.js';
+import {
+  CreateMatePhotoDto,
+  UploadMatePhotoDto,
+} from './dto/create-mate-photo.dto.js';
+import {
+  MATE_STORAGE_TOKEN,
+  type MateStorageProvider,
+  type MateUpload,
+} from './mate-storage.js';
 
 const MAX_GALLERY_SIZE = 6;
 
@@ -31,7 +42,9 @@ export class MateGalleryService {
     const photoModel = this.photoModel();
     const existing = await photoModel.where({ mateId: mate.id }).all();
     if (existing.length >= MAX_GALLERY_SIZE) {
-      throw new ConflictException('Mate gallery cannot contain more than 6 photos');
+      throw new ConflictException(
+        'Mate gallery cannot contain more than 6 photos',
+      );
     }
 
     const occupied = new Set(existing.map((photo) => photo.sortOrder));
@@ -67,7 +80,9 @@ export class MateGalleryService {
   async removePhoto(userId: number, photoId: number): Promise<void> {
     const mate = await this.requireMate(userId);
     const photoModel = this.photoModel();
-    const photo = await photoModel.where({ id: photoId, mateId: mate.id }).first();
+    const photo = await photoModel
+      .where({ id: photoId, mateId: mate.id })
+      .first();
     if (!photo) throw new NotFoundException('Mate photo not found');
 
     if (photo.storageKey && this.isOwnedStorageKey(photo.storageKey, mate.id)) {
@@ -95,15 +110,19 @@ export class MateGalleryService {
       return header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
     }
     if (file.mimetype === 'image/png') {
-      return header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+      return header
+        .subarray(0, 8)
+        .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
     }
     if (file.mimetype === 'image/gif') {
       const signature = header.subarray(0, 6).toString('ascii');
       return signature === 'GIF87a' || signature === 'GIF89a';
     }
     if (file.mimetype === 'image/webp') {
-      return header.subarray(0, 4).toString('ascii') === 'RIFF' &&
-        header.subarray(8, 12).toString('ascii') === 'WEBP';
+      return (
+        header.subarray(0, 4).toString('ascii') === 'RIFF' &&
+        header.subarray(8, 12).toString('ascii') === 'WEBP'
+      );
     }
     return false;
   }
@@ -122,15 +141,23 @@ export class MateGalleryService {
 
   private photoModel(): MateDatabase['orm']['public']['MatePhoto'] {
     const model = this.database.orm.public.MatePhoto;
-    if (!model) throw new UnprocessableEntityException('Mate gallery storage is not configured');
+    if (!model)
+      throw new UnprocessableEntityException(
+        'Mate gallery storage is not configured',
+      );
     return model;
   }
 
   private isOwnedStorageKey(storageKey: string, mateId: number): boolean {
-    return storageKey.startsWith(`mates/${mateId}/`) ||
-      storageKey.startsWith(`local/mates/${mateId}/`);
+    return (
+      storageKey.startsWith(`mates/${mateId}/`) ||
+      storageKey.startsWith(`local/mates/${mateId}/`)
+    );
   }
 }
 
 const isUniqueConstraintError = (error: unknown): boolean =>
-  typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  error.code === 'P2002';

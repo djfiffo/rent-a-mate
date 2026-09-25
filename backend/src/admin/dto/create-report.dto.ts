@@ -1,5 +1,12 @@
 import { Transform } from 'class-transformer';
-import { IsIn, IsInt, IsNotEmpty, IsString, MaxLength, IsPositive } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsString,
+  MaxLength,
+  IsPositive,
+} from 'class-validator';
 
 export class CreateReportDto {
   @IsIn(['user', 'mate', 'booking', 'review', 'message'])

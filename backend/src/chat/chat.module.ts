@@ -8,7 +8,7 @@ import { WsJwtGuard } from './ws-jwt.guard.js';
  * Optional real-time transport for the messaging feature (spec 6.7).
  * Imports `MessagesModule` to reuse its exported `MessagesService` instance
  * rather than depending on its internals directly, and `AuthModule` for
- * `JwtService` (needed by `WsJwtGuard` to verify handshake tokens).
+ * `AuthService` (needed by `WsJwtGuard` to consume handshake tickets).
  */
 @Module({
   imports: [AuthModule, MessagesModule],
