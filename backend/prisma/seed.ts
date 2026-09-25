@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { db } from '../src/prisma/db.js';
-import { PasswordHashService } from '../src/users/password.service.js';
+import { PasswordHashService } from '../src/shared/security/password/password-hash.service.js';
 
 type ProvinceData = {
   id: number;
@@ -194,6 +194,19 @@ async function main() {
       }
     }
     console.log('✅ Demo mates seeded');
+
+    const renterEmail = 'pat.demo@matefor.invalid';
+    const existingRenter = await db.orm.public.User.where({ email: renterEmail }).first();
+    if (!existingRenter) {
+      await db.orm.public.User.create({
+        name: 'Pat Demo',
+        email: renterEmail,
+        password,
+        role: 'renter',
+        isVerified: true,
+      });
+    }
+    console.log('✅ Demo renter seeded');
   }
 
   console.log('🎉 Database seed completed!');
