@@ -28,11 +28,16 @@ Flow ทดสอบคร่าวๆ แบบสั้น: register → login
 
 ## Chat Flow ผ่าน Socket.IO (step 10-12)
 
-เปิด Postman **New → Socket.IO Request** 2 tab (renter / mate), ทั้งสอง connect ไปที่ `http://localhost:3000` namespace `/chat` โดยใส่ token ใน `auth.token`:
+ขอ single-use ticket ใหม่สำหรับ renter และ mate จาก `POST /auth/socket-ticket` พร้อม
+Bearer access token ของแต่ละคน แล้วเปิด Postman **New → Socket.IO Request** 2 tab
+เชื่อมไปที่ `http://localhost:3000` namespace `/chat` โดยใส่ ticket ใน `auth.ticket`:
 
 ```json
-{ "token": "{{mateToken}}" }
+{ "ticket": "{{mateSocketTicket}}" }
 ```
+
+Ticket หมดอายุเร็วและใช้ได้เพียงครั้งเดียว จึงต้องสร้างใหม่ก่อนเชื่อมต่อแต่ละครั้ง
+และห้ามใส่ ticket ใน query string.
 
 | # | Case | ฝั่งไหน | Event | Payload | Expected |
 |----|------|---------|-------|---------|----------|

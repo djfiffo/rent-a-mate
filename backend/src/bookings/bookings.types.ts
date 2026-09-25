@@ -1,31 +1,44 @@
 import type { db } from '../prisma/db.js';
-import type { NotificationCreateInput, NotificationRecord } from '../notifications/notifications.types.js';
+import type {
+  NotificationCreateInput,
+  NotificationRecord,
+} from '../notifications/notifications.types.js';
 import type { PaymentClient } from '../payments/payments.types.js';
 import type { ReviewClient } from '../reviews/reviews.types.js';
 
 export type BookingClient = typeof db.orm.public.Booking;
 export type BookingFilter = Parameters<BookingClient['where']>[0];
 export type BookingQuery = ReturnType<BookingClient['where']>;
-export type BookingRecord = NonNullable<Awaited<ReturnType<BookingQuery['first']>>>;
+export type BookingRecord = NonNullable<
+  Awaited<ReturnType<BookingQuery['first']>>
+>;
 export type BookingCreateInput = Parameters<BookingClient['create']>[0];
 export type BookingUpdateInput = Parameters<BookingQuery['update']>[0];
 export type BookingStatus = BookingRecord['status'];
 
 type MateClient = typeof db.orm.public.Mate;
 type MateQuery = ReturnType<MateClient['where']>;
-export type MateRecordForBooking = NonNullable<Awaited<ReturnType<MateQuery['first']>>>;
+export type MateRecordForBooking = NonNullable<
+  Awaited<ReturnType<MateQuery['first']>>
+>;
 
 type ActivityClient = typeof db.orm.public.Activity;
 type ActivityQuery = ReturnType<ActivityClient['where']>;
-export type ActivityRecordForBooking = NonNullable<Awaited<ReturnType<ActivityQuery['first']>>>;
+export type ActivityRecordForBooking = NonNullable<
+  Awaited<ReturnType<ActivityQuery['first']>>
+>;
 
 type UserClient = typeof db.orm.public.User;
 type UserQuery = ReturnType<UserClient['where']>;
-export type UserRecordForBooking = NonNullable<Awaited<ReturnType<UserQuery['first']>>>;
+export type UserRecordForBooking = NonNullable<
+  Awaited<ReturnType<UserQuery['first']>>
+>;
 
 type MateActivityClient = typeof db.orm.public.MateActivity;
 type MateActivityQuery = ReturnType<MateActivityClient['where']>;
-export type MateActivityRecordForBooking = NonNullable<Awaited<ReturnType<MateActivityQuery['first']>>>;
+export type MateActivityRecordForBooking = NonNullable<
+  Awaited<ReturnType<MateActivityQuery['first']>>
+>;
 
 type PrismaTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

@@ -12,12 +12,16 @@ describe('MateUploadsController', () => {
     const client = { getObject: vi.fn() };
     const controller = new MateUploadsController(client as never, config);
 
-    await expect(controller.getPhoto('../private/file.png')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      controller.getPhoto('../private/file.png'),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(client.getObject).not.toHaveBeenCalled();
   });
 
   it('streams an existing mate photo with its image type', async () => {
-    const client = { getObject: vi.fn().mockResolvedValue(Readable.from([Buffer.from('png')])) };
+    const client = {
+      getObject: vi.fn().mockResolvedValue(Readable.from([Buffer.from('png')])),
+    };
     const controller = new MateUploadsController(client as never, config);
 
     const file = await controller.getPhoto(key);

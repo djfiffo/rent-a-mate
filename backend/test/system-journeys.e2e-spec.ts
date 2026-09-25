@@ -1,11 +1,17 @@
 import { Temporal } from '@js-temporal/polyfill';
+import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../src/prisma/db.js';
 import { createE2eApp } from './fixtures/e2e-app.js';
-import { cleanupTestDatabase, getFutureDate, seedTestDatabase, type TestData } from './fixtures/test-setup.js';
+import {
+  cleanupTestDatabase,
+  getFutureDate,
+  seedTestDatabase,
+  type TestData,
+} from './fixtures/test-setup.js';
 
 const PASSWORD = 'password123';
 
@@ -29,8 +35,16 @@ describe('Complete journeys and concurrency invariants (e2e)', () => {
   it('JOURNEY-01 completes register, profile, discovery, booking, chat, completion, review, and logout', async () => {
     const renterEmail = 'journey-renter@example.com';
     const mateEmail = 'journey-mate@example.com';
-    await register(app, { name: 'Journey Renter', email: renterEmail, role: 'renter' });
-    await register(app, { name: 'Journey Mate', email: mateEmail, role: 'mate' });
+    await register(app, {
+      name: 'Journey Renter',
+      email: renterEmail,
+      role: 'renter',
+    });
+    await register(app, {
+      name: 'Journey Mate',
+      email: mateEmail,
+      role: 'mate',
+    });
     const renter = await login(app, renterEmail);
     const mate = await login(app, mateEmail);
 
@@ -58,9 +72,15 @@ describe('Complete journeys and concurrency invariants (e2e)', () => {
 
     const search = await request(app.getHttpServer())
       .get('/api/v1/mates')
-      .query({ q: 'journey profile', activityId: data.activity1.id, availableDate: bookingDate })
+      .query({
+        q: 'journey profile',
+        activityId: data.activity1.id,
+        availableDate: bookingDate,
+      })
       .expect(200);
-    expect(search.body.data.items).toContainEqual(expect.objectContaining({ id: mateId }));
+    expect(search.body.data.items).toContainEqual(
+      expect.objectContaining({ id: mateId }),
+    );
 
     const booking = await request(app.getHttpServer())
       .post('/api/v1/bookings')
@@ -81,11 +101,16 @@ describe('Complete journeys and concurrency invariants (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/api/v1/bookings/${bookingId}/messages`)
       .set(bearer(renter.accessToken))
-      .send({ content: 'See you soon' })
+      .send({ clientMessageId: randomUUID(), content: 'See you soon' })
       .expect(201);
 
-    const pastDate = Temporal.Now.zonedDateTimeISO('Asia/Bangkok').toPlainDate().subtract({ days: 1 });
-    const past = (time: string) => pastDate.toZonedDateTime({ timeZone: 'Asia/Bangkok', plainTime: time }).toInstant();
+    const pastDate = Temporal.Now.zonedDateTimeISO('Asia/Bangkok')
+      .toPlainDate()
+      .subtract({ days: 1 });
+    const past = (time: string) =>
+      pastDate
+        .toZonedDateTime({ timeZone: 'Asia/Bangkok', plainTime: time })
+        .toInstant();
     await db.orm.public.Booking.where({ id: bookingId }).update({
       date: past('00:00'),
       startTime: past('10:00'),
@@ -101,8 +126,13 @@ describe('Complete journeys and concurrency invariants (e2e)', () => {
       .send({ rating: 5, comment: 'Great session' })
       .expect(201);
 
-    const detail = await request(app.getHttpServer()).get(`/api/v1/mates/${mateId}`).expect(200);
-    expect(detail.body.data.mate).toMatchObject({ avgRating: 5, reviewCount: 1 });
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/mates/${mateId}`)
+      .expect(200);
+    expect(detail.body.data.mate).toMatchObject({
+      avgRating: 5,
+      reviewCount: 1,
+    });
     await request(app.getHttpServer())
       .post('/api/v1/auth/logout')
       .send({ refreshToken: renter.refreshToken })
@@ -125,22 +155,40 @@ describe('Complete journeys and concurrency invariants (e2e)', () => {
     };
 
     const responses = await Promise.all([
-      request(app.getHttpServer()).post('/api/v1/bookings').set(bearer(renter1.accessToken)).send(body),
-      request(app.getHttpServer()).post('/api/v1/bookings').set(bearer(renter2.accessToken)).send(body),
+      request(app.getHttpServer())
+        .post('/api/v1/bookings')
+        .set(bearer(renter1.accessToken))
+        .send(body),
+      request(app.getHttpServer())
+        .post('/api/v1/bookings')
+        .set(bearer(renter2.accessToken))
+        .send(body),
     ]);
-    expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
-    const bookings = await db.orm.public.Booking.where({ mateId: data.mate1.id }).all();
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      201, 409,
+    ]);
+    const bookings = await db.orm.public.Booking.where({
+      mateId: data.mate1.id,
+    }).all();
     expect(bookings).toHaveLength(1);
   });
 
   it('AUTH-23 permits only one concurrent rotation of the same refresh token', async () => {
     const session = await login(app, data.renter1.email);
     const responses = await Promise.all([
-      request(app.getHttpServer()).post('/api/v1/auth/refresh').send({ refreshToken: session.refreshToken }),
-      request(app.getHttpServer()).post('/api/v1/auth/refresh').send({ refreshToken: session.refreshToken }),
+      request(app.getHttpServer())
+        .post('/api/v1/auth/refresh')
+        .send({ refreshToken: session.refreshToken }),
+      request(app.getHttpServer())
+        .post('/api/v1/auth/refresh')
+        .send({ refreshToken: session.refreshToken }),
     ]);
-    expect(responses.map((response) => response.status).sort()).toEqual([201, 401]);
-    const rows = await db.orm.public.RefreshToken.where({ userId: data.renter1.id }).all();
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      201, 401,
+    ]);
+    const rows = await db.orm.public.RefreshToken.where({
+      userId: data.renter1.id,
+    }).all();
     expect(rows.filter((row) => row.revokedAt === null)).toHaveLength(1);
   });
 });

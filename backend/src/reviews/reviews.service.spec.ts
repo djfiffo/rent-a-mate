@@ -1,4 +1,9 @@
-import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ReviewsService } from './reviews.service.js';
 import type { ReviewDatabase } from './reviews.types.js';
@@ -22,19 +27,33 @@ function matchesFilter(row: Row, filter: Filter): boolean {
   return Object.entries(filter).every(([key, value]) => row[key] === value);
 }
 
-function createTable(rows: Row[], idField: string | null, nextId: { value: number }) {
+function createTable(
+  rows: Row[],
+  idField: string | null,
+  nextId: { value: number },
+) {
   const makeQuery = (filters: Filter[]) => ({
     where: (filter: Filter) => makeQuery([...filters, filter]),
-    first: async () => rows.find((row) => filters.every((filter) => matchesFilter(row, filter))) ?? null,
-    all: async () => rows.filter((row) => filters.every((filter) => matchesFilter(row, filter))),
+    first: async () =>
+      rows.find((row) =>
+        filters.every((filter) => matchesFilter(row, filter)),
+      ) ?? null,
+    all: async () =>
+      rows.filter((row) =>
+        filters.every((filter) => matchesFilter(row, filter)),
+      ),
     update: async (data: Row) => {
-      const target = rows.find((row) => filters.every((filter) => matchesFilter(row, filter)));
+      const target = rows.find((row) =>
+        filters.every((filter) => matchesFilter(row, filter)),
+      );
       if (!target) return null;
       Object.assign(target, data);
       return { ...target };
     },
     delete: async () => {
-      const index = rows.findIndex((row) => filters.every((filter) => matchesFilter(row, filter)));
+      const index = rows.findIndex((row) =>
+        filters.every((filter) => matchesFilter(row, filter)),
+      );
       if (index === -1) return null;
       const [removed] = rows.splice(index, 1);
       return removed;
@@ -93,10 +112,19 @@ describe('ReviewsService', () => {
 
   describe('create', () => {
     it('creates a review for a completed booking owned by the caller', async () => {
-      const result = await fixture.service.create(renter, 1, { rating: 5, comment: 'Great!' });
+      const result = await fixture.service.create(renter, 1, {
+        rating: 5,
+        comment: 'Great!',
+      });
 
       expect(result).toEqual(
-        expect.objectContaining({ bookingId: 1, renterId: 7, mateId: 3, rating: 5, comment: 'Great!' }),
+        expect.objectContaining({
+          bookingId: 1,
+          renterId: 7,
+          mateId: 3,
+          rating: 5,
+          comment: 'Great!',
+        }),
       );
       expect(fixture.reviewRows).toHaveLength(1);
     });
@@ -113,39 +141,57 @@ describe('ReviewsService', () => {
     });
 
     it('rejects a booking that is not completed with 422 BOOKING_NOT_COMPLETED', async () => {
-      await expect(fixture.service.create(renter, 2, { rating: 5 })).rejects.toMatchObject({
+      await expect(
+        fixture.service.create(renter, 2, { rating: 5 }),
+      ).rejects.toMatchObject({
         message: 'BOOKING_NOT_COMPLETED',
       });
-      await expect(fixture.service.create(renter, 2, { rating: 5 })).rejects.toBeInstanceOf(
-        UnprocessableEntityException,
-      );
+      await expect(
+        fixture.service.create(renter, 2, { rating: 5 }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
 
     it('rejects a second review for the same booking with 409 REVIEW_ALREADY_EXISTS', async () => {
       await fixture.service.create(renter, 1, { rating: 5 });
-      await expect(fixture.service.create(renter, 1, { rating: 3 })).rejects.toBeInstanceOf(ConflictException);
+      await expect(
+        fixture.service.create(renter, 1, { rating: 3 }),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
 
     it('returns 404 for a non-existent booking', async () => {
-      await expect(fixture.service.create(renter, 999, { rating: 5 })).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        fixture.service.create(renter, 999, { rating: 5 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('returns 404 (not 403) when the caller is not the booking renter', async () => {
-      await expect(fixture.service.create(stranger, 1, { rating: 5 })).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        fixture.service.create(stranger, 1, { rating: 5 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
   describe('update', () => {
     it('edits rating and comment as the review owner', async () => {
       const created = await fixture.service.create(renter, 1, { rating: 3 });
-      const updated = await fixture.service.update(renter, created.id, { rating: 5, comment: 'Updated' });
+      const updated = await fixture.service.update(renter, created.id, {
+        rating: 5,
+        comment: 'Updated',
+      });
 
-      expect(updated).toEqual(expect.objectContaining({ rating: 5, comment: 'Updated' }));
+      expect(updated).toEqual(
+        expect.objectContaining({ rating: 5, comment: 'Updated' }),
+      );
     });
 
     it('allows a partial update of only rating', async () => {
-      const created = await fixture.service.create(renter, 1, { rating: 3, comment: 'Ok' });
-      const updated = await fixture.service.update(renter, created.id, { rating: 4 });
+      const created = await fixture.service.create(renter, 1, {
+        rating: 3,
+        comment: 'Ok',
+      });
+      const updated = await fixture.service.update(renter, created.id, {
+        rating: 4,
+      });
 
       expect(updated.rating).toBe(4);
       expect(updated.comment).toBe('Ok');
@@ -153,20 +199,22 @@ describe('ReviewsService', () => {
 
     it('rejects an update with neither field supplied', async () => {
       const created = await fixture.service.create(renter, 1, { rating: 3 });
-      await expect(fixture.service.update(renter, created.id, {})).rejects.toBeInstanceOf(
-        UnprocessableEntityException,
-      );
+      await expect(
+        fixture.service.update(renter, created.id, {}),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
 
     it('returns 404 for a non-owner (not 403), to avoid leaking existence', async () => {
       const created = await fixture.service.create(renter, 1, { rating: 3 });
-      await expect(fixture.service.update(stranger, created.id, { rating: 1 })).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        fixture.service.update(stranger, created.id, { rating: 1 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('returns 404 for a non-existent review', async () => {
-      await expect(fixture.service.update(renter, 999, { rating: 1 })).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        fixture.service.update(renter, 999, { rating: 1 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
@@ -185,12 +233,16 @@ describe('ReviewsService', () => {
 
     it('rejects removal by a non-owner, non-admin caller', async () => {
       const created = await fixture.service.create(renter, 1, { rating: 3 });
-      await expect(fixture.service.remove(stranger, created.id)).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        fixture.service.remove(stranger, created.id),
+      ).rejects.toBeInstanceOf(ForbiddenException);
       expect(fixture.reviewRows).toHaveLength(1);
     });
 
     it('returns 404 for a non-existent review', async () => {
-      await expect(fixture.service.remove(renter, 999)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(fixture.service.remove(renter, 999)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 });

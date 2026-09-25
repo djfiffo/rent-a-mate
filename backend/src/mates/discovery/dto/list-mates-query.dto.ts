@@ -19,7 +19,14 @@ import {
 } from 'class-validator';
 import type { MateSort } from '../mate-discovery.types.js';
 
-const SORTS: MateSort[] = ['rating', '-rating', 'rate', '-rate', 'createdAt', '-createdAt'];
+const SORTS: MateSort[] = [
+  'rating',
+  '-rating',
+  'rate',
+  '-rate',
+  'createdAt',
+  '-createdAt',
+];
 
 const toArray = ({ value }: { value: unknown }) =>
   value === undefined ? undefined : Array.isArray(value) ? value : [value];
@@ -31,7 +38,11 @@ const toDecimal = ({ value }: { value: unknown }) =>
 class RateRangeConstraint implements ValidatorConstraintInterface {
   validate(maxRate: string | undefined, args: ValidationArguments): boolean {
     const minRate = (args.object as ListMatesQueryDto).minRate;
-    return minRate === undefined || maxRate === undefined || Number(minRate) <= Number(maxRate);
+    return (
+      minRate === undefined ||
+      maxRate === undefined ||
+      Number(minRate) <= Number(maxRate)
+    );
   }
 
   defaultMessage(): string {

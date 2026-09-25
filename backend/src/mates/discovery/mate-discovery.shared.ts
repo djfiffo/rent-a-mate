@@ -43,21 +43,30 @@ export const rowsByIds = async (
   if (ids.length === 0) return [];
   if (typeof model?.where === 'function') {
     let query = model.where((row: any) => row[field].in(ids));
-    if (refine && typeof query?.where === 'function') query = query.where(refine);
+    if (refine && typeof query?.where === 'function')
+      query = query.where(refine);
     return query.all();
   }
   const rows = typeof model?.all === 'function' ? await model.all() : [];
   return rows.filter((row: any) => ids.includes(row[field]));
 };
 
-export const averageRating = (reviews: Array<{ rating: number }>): number | null => {
+export const averageRating = (
+  reviews: Array<{ rating: number }>,
+): number | null => {
   if (reviews.length === 0) return null;
   return Number(
-    (reviews.reduce((total, review) => total + Number(review.rating), 0) / reviews.length).toFixed(1),
+    (
+      reviews.reduce((total, review) => total + Number(review.rating), 0) /
+      reviews.length
+    ).toFixed(1),
   );
 };
 
-export const compareNullableNumber = (left: number | null, right: number | null): number => {
+export const compareNullableNumber = (
+  left: number | null,
+  right: number | null,
+): number => {
   if (left === null && right === null) return 0;
   if (left === null) return -1;
   if (right === null) return 1;
@@ -66,7 +75,11 @@ export const compareNullableNumber = (left: number | null, right: number | null)
 
 export const toEpochMillis = (value: unknown): number => {
   if (value instanceof Date) return value.getTime();
-  if (typeof value === 'object' && value !== null && 'epochMilliseconds' in value) {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'epochMilliseconds' in value
+  ) {
     return Number((value as { epochMilliseconds: number }).epochMilliseconds);
   }
   const parsed = typeof value === 'string' ? Date.parse(value) : Number.NaN;

@@ -10,10 +10,7 @@ import { UsersService } from './users.service.js';
   imports: [AuthModule, PasswordModule],
 
   controllers: [UsersController],
-  providers: [
-    UsersService,
-    { provide: DATABASE_TOKEN, useValue: db },
-  ],
+  providers: [UsersService, { provide: DATABASE_TOKEN, useValue: db }],
   exports: [UsersService],
 })
 export class UsersModule {}

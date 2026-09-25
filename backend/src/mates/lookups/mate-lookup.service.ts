@@ -1,6 +1,9 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
-import { modelRows, type DiscoveryDatabase } from '../discovery/mate-discovery.shared.js';
+import {
+  modelRows,
+  type DiscoveryDatabase,
+} from '../discovery/mate-discovery.shared.js';
 
 export interface LookupItem {
   id: number;
@@ -9,7 +12,9 @@ export interface LookupItem {
 
 @Injectable()
 export class MateLookupService {
-  constructor(@Inject(MATES_DATABASE_TOKEN) private readonly database: DiscoveryDatabase) {}
+  constructor(
+    @Inject(MATES_DATABASE_TOKEN) private readonly database: DiscoveryDatabase,
+  ) {}
 
   async activities(): Promise<LookupItem[]> {
     return this.sorted('Activity');
@@ -24,9 +29,14 @@ export class MateLookupService {
   }
 
   async districts(provinceId: number): Promise<LookupItem[]> {
-    const provinces = await modelRows(this.database.orm.public.Province, { id: provinceId });
-    if (provinces.length === 0) throw new NotFoundException('Province not found');
-    const rows = await modelRows(this.database.orm.public.District, { provinceId });
+    const provinces = await modelRows(this.database.orm.public.Province, {
+      id: provinceId,
+    });
+    if (provinces.length === 0)
+      throw new NotFoundException('Province not found');
+    const rows = await modelRows(this.database.orm.public.District, {
+      provinceId,
+    });
     return this.toSortedItems(rows);
   }
 

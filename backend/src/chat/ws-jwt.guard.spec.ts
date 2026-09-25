@@ -19,7 +19,10 @@ vi.mock('../prisma/db.js', () => ({
 
 const { WsJwtGuard } = await import('./ws-jwt.guard.js');
 
-function createSocket(auth: Record<string, unknown> = {}, query: Record<string, unknown> = {}) {
+function createSocket(
+  auth: Record<string, unknown> = {},
+  query: Record<string, unknown> = {},
+) {
   return {
     id: 'socket-1',
     handshake: { auth, query },
@@ -34,73 +37,101 @@ describe('WsJwtGuard', () => {
     userRows.set(7, { id: 7, role: 'renter', isBanned: false, isActive: true });
   });
 
-  it('authenticates a valid access token and returns the user', async () => {
-    const jwtService = { verifyAsync: vi.fn().mockResolvedValue({ sub: 7, role: 'renter', type: 'access' }) };
-    const guard = new WsJwtGuard(jwtService as never);
-    const client = createSocket({ token: 'valid-token' });
+  it('consumes a valid single-use socket ticket and returns the user', async () => {
+    const authService = {
+      consumeSocketTicket: vi.fn().mockResolvedValue({ id: 7, role: 'renter' }),
+    };
+    const guard = new WsJwtGuard(authService as never);
+    const client = createSocket({ ticket: 'valid-ticket' });
 
-    await expect(guard.authenticate(client as never)).resolves.toEqual({ id: 7, role: 'renter' });
-    expect(jwtService.verifyAsync).toHaveBeenCalledWith('valid-token');
+    await expect(guard.authenticate(client as never)).resolves.toEqual({
+      id: 7,
+      role: 'renter',
+    });
+    expect(authService.consumeSocketTicket).toHaveBeenCalledWith(
+      'valid-ticket',
+    );
   });
 
-  it('rejects a token sent only through handshake.query.token', async () => {
-    const jwtService = { verifyAsync: vi.fn().mockResolvedValue({ sub: 7, role: 'renter', type: 'access' }) };
-    const guard = new WsJwtGuard(jwtService as never);
-    const client = createSocket({}, { token: 'query-token' });
+  it('rejects a ticket sent only through the query string', async () => {
+    const authService = { consumeSocketTicket: vi.fn() };
+    const guard = new WsJwtGuard(authService as never);
+    const client = createSocket({}, { ticket: 'query-ticket' });
 
-    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(authService.consumeSocketTicket).not.toHaveBeenCalled();
   });
 
-  it('rejects when no token is present', async () => {
-    const jwtService = { verifyAsync: vi.fn() };
-    const guard = new WsJwtGuard(jwtService as never);
+  it('rejects when no ticket is present', async () => {
+    const authService = { consumeSocketTicket: vi.fn() };
+    const guard = new WsJwtGuard(authService as never);
     const client = createSocket();
 
-    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(authService.consumeSocketTicket).not.toHaveBeenCalled();
   });
 
-  it('rejects an expired/invalid token', async () => {
-    const jwtService = { verifyAsync: vi.fn().mockRejectedValue(new Error('jwt expired')) };
-    const guard = new WsJwtGuard(jwtService as never);
-    const client = createSocket({ token: 'expired-token' });
+  it('rejects an expired, invalid, or already-used ticket', async () => {
+    const authService = {
+      consumeSocketTicket: vi
+        .fn()
+        .mockRejectedValue(new UnauthorizedException()),
+    };
+    const guard = new WsJwtGuard(authService as never);
+    const client = createSocket({ ticket: 'expired-ticket' });
 
-    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(UnauthorizedException);
-  });
-
-  it('rejects a refresh token used where an access token is required', async () => {
-    const jwtService = { verifyAsync: vi.fn().mockResolvedValue({ sub: 7, role: 'renter', type: 'refresh' }) };
-    const guard = new WsJwtGuard(jwtService as never);
-    const client = createSocket({ token: 'refresh-token' });
-
-    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('rejects when the user no longer exists', async () => {
-    const jwtService = { verifyAsync: vi.fn().mockResolvedValue({ sub: 999, role: 'renter', type: 'access' }) };
-    const guard = new WsJwtGuard(jwtService as never);
-    const client = createSocket({ token: 'valid-token' });
+    const authService = {
+      consumeSocketTicket: vi
+        .fn()
+        .mockResolvedValue({ id: 999, role: 'renter' }),
+    };
+    const guard = new WsJwtGuard(authService as never);
+    const client = createSocket({ ticket: 'valid-ticket' });
 
-    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('rejects a banned user', async () => {
     userRows.set(7, { id: 7, role: 'renter', isBanned: true, isActive: true });
-    const jwtService = { verifyAsync: vi.fn().mockResolvedValue({ sub: 7, role: 'renter', type: 'access' }) };
-    const guard = new WsJwtGuard(jwtService as never);
-    const client = createSocket({ token: 'valid-token' });
+    const authService = {
+      consumeSocketTicket: vi.fn().mockResolvedValue({ id: 7, role: 'renter' }),
+    };
+    const guard = new WsJwtGuard(authService as never);
+    const client = createSocket({ ticket: 'valid-ticket' });
 
-    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('rejects an inactive/deactivated user', async () => {
-    userRows.set(7, { id: 7, role: 'renter', isBanned: false, isActive: false });
-    const jwtService = { verifyAsync: vi.fn().mockResolvedValue({ sub: 7, role: 'renter', type: 'access' }) };
-    const guard = new WsJwtGuard(jwtService as never);
-    const client = createSocket({ token: 'valid-token' });
+    userRows.set(7, {
+      id: 7,
+      role: 'renter',
+      isBanned: false,
+      isActive: false,
+    });
+    const authService = {
+      consumeSocketTicket: vi.fn().mockResolvedValue({ id: 7, role: 'renter' }),
+    };
+    const guard = new WsJwtGuard(authService as never);
+    const client = createSocket({ ticket: 'valid-ticket' });
 
-    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   describe('reject', () => {
@@ -109,9 +140,11 @@ describe('WsJwtGuard', () => {
       const guard = new WsJwtGuard(jwtService as never);
       const client = createSocket();
 
-      guard.reject(client as never, 'Missing token');
+      guard.reject(client as never, 'Missing socket ticket');
 
-      expect(client.emit).toHaveBeenCalledWith('error', { message: 'Missing token' });
+      expect(client.emit).toHaveBeenCalledWith('error', {
+        message: 'Missing socket ticket',
+      });
       expect(client.disconnect).toHaveBeenCalledWith(true);
     });
   });

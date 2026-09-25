@@ -23,7 +23,9 @@ export class StripeWebhookService {
   async processEvent(rawBody: Buffer, signature: string): Promise<void> {
     const event = this.verify(rawBody, signature);
 
-    const alreadyProcessed = await this.paymentsService.isWebhookEventProcessed(event.id);
+    const alreadyProcessed = await this.paymentsService.isWebhookEventProcessed(
+      event.id,
+    );
     if (alreadyProcessed) {
       return;
     }
@@ -42,7 +44,9 @@ export class StripeWebhookService {
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
         const paymentIntentId =
-          typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+          typeof charge.payment_intent === 'string'
+            ? charge.payment_intent
+            : charge.payment_intent?.id;
         if (paymentIntentId) {
           await this.paymentsService.markRefunded(paymentIntentId);
         }

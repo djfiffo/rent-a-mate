@@ -13,7 +13,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard.js';
-import { successResponse, type ApiResponse } from '../../shared/http/api-response.js';
+import {
+  successResponse,
+  type ApiResponse,
+} from '../../shared/http/api-response.js';
 import { CurrentUser } from '../../shared/http/decorators/current-user.decorator.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
 import { requireMateUserId } from '../internal/require-mate-user.js';
@@ -26,7 +29,9 @@ import { MateAvailabilityService } from './mate-availability.service.js';
 @Controller('mates')
 @UseGuards(JwtAuthGuard)
 export class MateAvailabilityController {
-  constructor(private readonly mateAvailabilityService: MateAvailabilityService) {}
+  constructor(
+    private readonly mateAvailabilityService: MateAvailabilityService,
+  ) {}
 
   @Post('me/availability')
   @HttpCode(HttpStatus.CREATED)
@@ -34,7 +39,10 @@ export class MateAvailabilityController {
     @CurrentUser() user: AuthUser | undefined,
     @Body() input: CreateMateAvailabilityDto,
   ): Promise<ApiResponse<{ availability: MateAvailabilityRecord }>> {
-    const availability = await this.mateAvailabilityService.create(requireMateUserId(user), input);
+    const availability = await this.mateAvailabilityService.create(
+      requireMateUserId(user),
+      input,
+    );
     return successResponse('Mate availability created', { availability });
   }
 
@@ -42,7 +50,9 @@ export class MateAvailabilityController {
   async findMine(
     @CurrentUser() user: AuthUser | undefined,
   ): Promise<ApiResponse<{ availability: MateAvailabilityRecord[] }>> {
-    const availability = await this.mateAvailabilityService.findMine(requireMateUserId(user));
+    const availability = await this.mateAvailabilityService.findMine(
+      requireMateUserId(user),
+    );
     return successResponse('Mate availability retrieved', { availability });
   }
 
@@ -51,8 +61,13 @@ export class MateAvailabilityController {
     @CurrentUser() user: AuthUser | undefined,
     @Body() input: ReplaceMateAvailabilityDto,
   ): Promise<ApiResponse<{ slots: MateAvailabilityRecord[] }>> {
-    const availability = await this.mateAvailabilityService.replace(requireMateUserId(user), input);
-    return successResponse('Mate availability replaced', { slots: availability });
+    const availability = await this.mateAvailabilityService.replace(
+      requireMateUserId(user),
+      input,
+    );
+    return successResponse('Mate availability replaced', {
+      slots: availability,
+    });
   }
 
   @Patch('me/availability/:availabilityId')
@@ -75,6 +90,9 @@ export class MateAvailabilityController {
     @CurrentUser() user: AuthUser | undefined,
     @Param('availabilityId', ParseIntPipe) availabilityId: number,
   ): Promise<void> {
-    await this.mateAvailabilityService.remove(requireMateUserId(user), availabilityId);
+    await this.mateAvailabilityService.remove(
+      requireMateUserId(user),
+      availabilityId,
+    );
   }
 }

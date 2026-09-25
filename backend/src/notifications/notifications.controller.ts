@@ -9,7 +9,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
+import {
+  successResponse,
+  type ApiResponse,
+} from '../shared/http/api-response.js';
 import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import { ListNotificationsQueryDto } from './dto/list-notifications-query.dto.js';
@@ -38,7 +41,10 @@ export class NotificationsController {
     @CurrentUser() user: AuthUser | undefined,
     @Param('notificationId', ParseIntPipe) notificationId: number,
   ): Promise<ApiResponse<{ notification: NotificationRecord }>> {
-    const notification = await this.notificationsService.markRead(this.requireUserId(user), notificationId);
+    const notification = await this.notificationsService.markRead(
+      this.requireUserId(user),
+      notificationId,
+    );
     return successResponse('Notification marked as read', { notification });
   }
 
@@ -46,7 +52,9 @@ export class NotificationsController {
   async markAllRead(
     @CurrentUser() user: AuthUser | undefined,
   ): Promise<ApiResponse<{ updated: number }>> {
-    const result = await this.notificationsService.markAllRead(this.requireUserId(user));
+    const result = await this.notificationsService.markAllRead(
+      this.requireUserId(user),
+    );
     return successResponse('Notifications marked as read', result);
   }
 
@@ -56,5 +64,4 @@ export class NotificationsController {
     }
     return user.id;
   }
-
 }

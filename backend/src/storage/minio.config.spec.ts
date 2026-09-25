@@ -25,8 +25,10 @@ describe('readMinioConfig', () => {
   });
 
   it('accepts a same-origin upload route for private object storage', () => {
-    expect(readMinioConfig({ ...complete, MINIO_PUBLIC_URL: '/api/v1/uploads' })?.publicUrl)
-      .toBe('/api/v1/uploads');
+    expect(
+      readMinioConfig({ ...complete, MINIO_PUBLIC_URL: '/api/v1/uploads' })
+        ?.publicUrl,
+    ).toBe('/api/v1/uploads');
   });
 
   it('uses the local fallback when MinIO is not configured outside production', () => {
@@ -34,6 +36,8 @@ describe('readMinioConfig', () => {
   });
 
   it('rejects partial configuration', () => {
-    expect(() => readMinioConfig({ MINIO_ENDPOINT: 'localhost' })).toThrow(/Incomplete MinIO configuration/);
+    expect(() => readMinioConfig({ MINIO_ENDPOINT: 'localhost' })).toThrow(
+      /Incomplete MinIO configuration/,
+    );
   });
 });

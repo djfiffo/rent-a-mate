@@ -9,7 +9,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
+import {
+  successResponse,
+  type ApiResponse,
+} from '../shared/http/api-response.js';
 import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import type { PaginatedResult } from '../shared/types/pagination.js';
@@ -47,6 +50,20 @@ export class BookingPaymentsController {
     return successResponse('Payment intent created', result);
   }
 
+  @Post('confirm')
+  @Roles('renter')
+  async confirmLocalMockPayment(
+    @CurrentUser() user: AuthUser | undefined,
+    @Param('bookingId', ParseIntPipe) bookingId: number,
+  ): Promise<ApiResponse<PaymentDetail>> {
+    const authUser = requireUser(user);
+    const result = await this.paymentsService.confirmLocalMockPayment(
+      authUser,
+      bookingId,
+    );
+    return successResponse('Local test payment completed', result);
+  }
+
   @Get()
   async getStatus(
     @CurrentUser() user: AuthUser | undefined,
@@ -59,7 +76,9 @@ export class BookingPaymentsController {
 
   @Post('refund')
   @Roles('admin')
-  async refund(@Param('bookingId', ParseIntPipe) bookingId: number): Promise<ApiResponse<PaymentDetail>> {
+  async refund(
+    @Param('bookingId', ParseIntPipe) bookingId: number,
+  ): Promise<ApiResponse<PaymentDetail>> {
     const result = await this.paymentsService.refundAsAdmin(bookingId);
     return successResponse('Refund initiated', result);
   }

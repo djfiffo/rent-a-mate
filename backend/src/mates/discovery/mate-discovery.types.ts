@@ -1,6 +1,7 @@
 import type { PaginationMeta } from '../../shared/types/pagination.js';
 
-export type MateSort = 'rating' | '-rating' | 'rate' | '-rate' | 'createdAt' | '-createdAt';
+export type MateSort =
+  'rating' | '-rating' | 'rate' | '-rate' | 'createdAt' | '-createdAt';
 
 export interface MateDiscoveryQuery {
   q?: string;

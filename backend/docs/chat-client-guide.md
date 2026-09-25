@@ -1,84 +1,62 @@
-# Chat client integration guide: REST vs Socket.IO
+# Chat client integration guide: REST writes, Socket.IO updates
 
-This backend exposes booking chat (spec §6.7) through **two entry points that
-call the exact same server-side logic**:
+Booking chat has one durable message-write path and one optional realtime
+channel:
 
-- **REST**: `GET/POST /api/v1/bookings/:bookingId/messages` (mandatory, always
-  available) — see `MessagesController`/`MessagesService`.
-- **Socket.IO**: the `/chat` namespace (optional, real-time) — see
-  `ChatGateway`.
+- **REST**: `GET/POST /api/v1/bookings/:bookingId/messages` loads history and
+  creates messages.
+- **Socket.IO**: `/chat` joins booking rooms, broadcasts committed messages,
+  typing state, and read receipts.
 
-Both ultimately call `MessagesService.assertParticipant()` / `.create()` /
-`.markRead()`. There is only **one** place messages are ever written to the
-database. This guide is for frontend/client implementers deciding which path
-to use and when.
+## Message flow
 
-## The one hard rule: never use both paths for the same message
+The client always sends a message with REST, whether the socket is connected
+or not. Each user action carries a UUID `clientMessageId`, and a retry reuses
+the same UUID. `MessagesController` calls `MessagesService.create()` exactly once.
+That service writes the message and recipient notification in one transaction.
+Only after it resolves does the controller publish a message-created event;
+the gateway observes that result and emits `new_message` without writing to the
+database again.
 
-`MessagesService.create()` has no de-duplication/idempotency check. If a
-client both `POST`s a message over REST **and** `emit`s `send_message` over
-Socket.IO for the same user action, the server will happily insert **two**
-separate rows — the same text will appear twice in the chat.
+Clients should merge the REST response and `new_message` event by message ID.
+The sender can receive both representations of the same committed row, but it
+must render only one message.
 
-**Pick exactly one path per outgoing message.** Never call both for the same
-send action.
+The database has a unique `(senderId, clientMessageId)` constraint. If a REST
+response is lost and the client retries, the backend returns the original row,
+does not create another notification, and does not broadcast the row again.
 
-## Decision table
-
-| Situation | Use |
+| Situation | Transport |
 |---|---|
-| Socket connected (normal case — chat screen open) | `emit('send_message', ...)` — faster, and the room broadcast (`new_message`) delivers it to the other participant in the same round trip |
-| Socket not connected / still connecting / disconnected | `POST /bookings/:bookingId/messages` (REST fallback) |
-| Loading chat history (initial load, pagination, infinite scroll) | `GET /bookings/:bookingId/messages` — **always**, regardless of socket state; Socket.IO has no pagination endpoint |
-| Receiving new messages in real time while the chat screen is open | Listen for the `new_message` event only — do not poll `GET /messages` while connected |
-| Background job / admin tool / any caller that does not want to hold a persistent connection | `POST /messages` — always |
-| Socket.IO server disabled/unavailable entirely | The whole feature still works over REST alone; Socket.IO is optional per spec, REST is mandatory |
+| Initial history and pagination | REST `GET` |
+| Create a message | REST `POST` |
+| Receive a committed message while connected | Socket `new_message` |
+| Socket unavailable | REST polling |
+| Reconnect or join a room | Socket join, then REST reconciliation |
+| Typing state | Socket `typing` |
+| Mark/read receipt | Socket `mark_read` / `messages_read` |
 
-## Recommended send logic (handles the race where the socket drops mid-send)
+## Authentication
 
-```
-function sendMessage(bookingId, content):
-    if socket.connected:
-        emit "send_message" { bookingId, content } with ack callback
-        wait up to ~3s for ack
-        if ack received:
-            done
-        else:
-            # socket looked connected but never acked (e.g. it just dropped)
-            fall back to POST /bookings/{bookingId}/messages
-    else:
-        POST /bookings/{bookingId}/messages
-```
+Call `POST /auth/socket-ticket` through the frontend's same-origin BFF. It uses
+the HttpOnly session server-side and returns a short-lived, single-use ticket.
+Pass the ticket only as `socket.handshake.auth.ticket`. A reconnect must request
+a fresh ticket.
 
-Do **not** start both the `emit` and the `POST` at the same time "just to be
-safe" — always try one, then fall back to the other only if the first fails
-or times out.
+## Socket event reference
 
-## Event reference (Socket.IO, `/chat` namespace)
-
-Auth: pass the access token via `socket.handshake.auth.token` (or, as a
-fallback, a `token` query-string parameter) when connecting. The same
-`isBanned`/`isActive` checks used by REST's `JwtAuthGuard` apply here too, via
-`WsJwtGuard`.
-
-All client→server events reply through their ack callback with
-`{ ok: true, data? }` or `{ ok: false, error: string }` — Socket.IO has no
-HTTP status codes, so exceptions from `MessagesService` are translated into
-this envelope instead of throwing.
+All client-to-server events acknowledge with `{ ok: true, data? }` or
+`{ ok: false, error: string }`.
 
 | Event | Direction | Payload | Notes |
 |---|---|---|---|
-| `join_booking` | client → server | `{ bookingId }` | Authorizes via the same participant check as REST; joins room `booking:{bookingId}` |
-| `leave_booking` | client → server | `{ bookingId }` | No authorization check (leaving is always safe) |
-| `send_message` | client → server | `{ bookingId, content }` | Same validation/gating as REST (`422 MESSAGE_NOT_ALLOWED` unless the booking is `confirmed`/`completed`); broadcasts `new_message` to the whole room including the sender |
-| `typing` | client → server → broadcast | `{ bookingId, isTyping }` | Not persisted; broadcast to everyone else in the room, never echoed back to the sender |
-| `mark_read` | client → server | `{ bookingId }` | Marks the other participant's unread messages as read; broadcasts `messages_read` to the room |
+| `join_booking` | client → server | `{ bookingId }` | Checks participation and joins `booking:{bookingId}` |
+| `leave_booking` | client → server | `{ bookingId }` | Leaves the room |
+| `typing` | client → server → room | `{ bookingId, isTyping }` | Transient and not persisted |
+| `mark_read` | client → server | `{ bookingId }` | Persists read state and broadcasts `messages_read` |
+| `new_message` | server → client | created message | Emitted after a successful REST write |
+| `messages_read` | server → client | `{ bookingId, readerId, updatedCount }` | Read receipt update |
 
-Server→client-only events:
-
-| Event | Payload |
-|---|---|
-| `new_message` | The created message (same shape as a REST list item) |
-| `typing` | `{ bookingId, userId, isTyping }` |
-| `messages_read` | `{ bookingId, readerId, updatedCount }` |
-| `error` | `{ message }` — emitted once right before the server disconnects an unauthenticated socket |
+There is deliberately no `send_message` Socket event. This prevents a client
+from sending the same user action through Socket and REST and creating two
+database rows.

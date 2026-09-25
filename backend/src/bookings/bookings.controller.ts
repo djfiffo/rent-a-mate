@@ -11,13 +11,19 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { successResponse, type ApiResponse } from '../shared/http/api-response.js';
+import {
+  successResponse,
+  type ApiResponse,
+} from '../shared/http/api-response.js';
 import { CurrentUser } from '../shared/http/decorators/current-user.decorator.js';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import type { PaginatedResult } from '../shared/types/pagination.js';
 import { Roles } from '../shared/authorization/roles.decorator.js';
 import { RolesGuard } from '../shared/authorization/roles.guard.js';
-import { BookingsService, type CreateBookingResult } from './bookings.service.js';
+import {
+  BookingsService,
+  type CreateBookingResult,
+} from './bookings.service.js';
 import type { BookingDetail, BookingRecord } from './bookings.types.js';
 import { CreateBookingDto } from './dto/create-booking.dto.js';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto.js';
@@ -110,5 +116,4 @@ export class BookingsController {
   private requireUserId(user: AuthUser | undefined): number {
     return this.requireUser(user).id;
   }
-
 }

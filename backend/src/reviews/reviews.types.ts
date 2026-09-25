@@ -1,16 +1,23 @@
 import type { db } from '../prisma/db.js';
-import type { NotificationCreateInput, NotificationRecord } from '../notifications/notifications.types.js';
+import type {
+  NotificationCreateInput,
+  NotificationRecord,
+} from '../notifications/notifications.types.js';
 
 export type ReviewClient = typeof db.orm.public.Review;
 export type ReviewFilter = Parameters<ReviewClient['where']>[0];
 export type ReviewQuery = ReturnType<ReviewClient['where']>;
-export type ReviewRecord = NonNullable<Awaited<ReturnType<ReviewQuery['first']>>>;
+export type ReviewRecord = NonNullable<
+  Awaited<ReturnType<ReviewQuery['first']>>
+>;
 export type ReviewCreateInput = Parameters<ReviewClient['create']>[0];
 export type ReviewUpdateInput = Parameters<ReviewQuery['update']>[0];
 
 type BookingClient = typeof db.orm.public.Booking;
 type BookingQuery = ReturnType<BookingClient['where']>;
-export type BookingRecordForReview = NonNullable<Awaited<ReturnType<BookingQuery['first']>>>;
+export type BookingRecordForReview = NonNullable<
+  Awaited<ReturnType<BookingQuery['first']>>
+>;
 
 /**
  * Structural shape shared by the top-level `db` client and the callback

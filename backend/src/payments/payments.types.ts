@@ -1,20 +1,29 @@
 import type { db } from '../prisma/db.js';
-import type { NotificationCreateInput, NotificationRecord } from '../notifications/notifications.types.js';
+import type {
+  NotificationCreateInput,
+  NotificationRecord,
+} from '../notifications/notifications.types.js';
 
 export type PaymentClient = typeof db.orm.public.Payment;
 export type PaymentFilter = Parameters<PaymentClient['where']>[0];
 export type PaymentQuery = ReturnType<PaymentClient['where']>;
-export type PaymentRecord = NonNullable<Awaited<ReturnType<PaymentQuery['first']>>>;
+export type PaymentRecord = NonNullable<
+  Awaited<ReturnType<PaymentQuery['first']>>
+>;
 export type PaymentCreateInput = Parameters<PaymentClient['create']>[0];
 export type PaymentStatusValue = PaymentRecord['status'];
 
 type BookingClient = typeof db.orm.public.Booking;
 type BookingQuery = ReturnType<BookingClient['where']>;
-export type BookingRecordForPayment = NonNullable<Awaited<ReturnType<BookingQuery['first']>>>;
+export type BookingRecordForPayment = NonNullable<
+  Awaited<ReturnType<BookingQuery['first']>>
+>;
 
 type MateClient = typeof db.orm.public.Mate;
 type MateQuery = ReturnType<MateClient['where']>;
-export type MateRecordForPayment = NonNullable<Awaited<ReturnType<MateQuery['first']>>>;
+export type MateRecordForPayment = NonNullable<
+  Awaited<ReturnType<MateQuery['first']>>
+>;
 
 type StripeWebhookEventClient = typeof db.orm.public.StripeWebhookEvent;
 /**

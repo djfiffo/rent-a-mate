@@ -6,7 +6,10 @@ import type { App } from 'supertest/types';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../src/prisma/db.js';
 import { createE2eApp } from './fixtures/e2e-app.js';
-import { cleanupTestDatabase, seedTestDatabase } from './fixtures/test-setup.js';
+import {
+  cleanupTestDatabase,
+  seedTestDatabase,
+} from './fixtures/test-setup.js';
 
 const PASSWORD = 'password123';
 
@@ -29,18 +32,36 @@ describe('Authentication and account settings (e2e)', () => {
   it('AUTH-01/02/05/06 registers both roles, hashes passwords, normalizes email, and logs in', async () => {
     const renter = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
-      .send({ name: 'Renter One', email: 'Renter@Example.COM', password: PASSWORD, role: 'renter' })
+      .send({
+        name: 'Renter One',
+        email: 'Renter@Example.COM',
+        password: PASSWORD,
+        role: 'renter',
+      })
       .expect(201);
     const mate = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
-      .send({ name: 'Mate One', email: 'mate@example.com', password: PASSWORD, role: 'mate' })
+      .send({
+        name: 'Mate One',
+        email: 'mate@example.com',
+        password: PASSWORD,
+        role: 'mate',
+      })
       .expect(201);
 
-    expect(renter.body.data.user).toMatchObject({ email: 'renter@example.com', role: 'renter' });
-    expect(mate.body.data.user).toMatchObject({ email: 'mate@example.com', role: 'mate' });
+    expect(renter.body.data.user).toMatchObject({
+      email: 'renter@example.com',
+      role: 'renter',
+    });
+    expect(mate.body.data.user).toMatchObject({
+      email: 'mate@example.com',
+      role: 'mate',
+    });
     expect(JSON.stringify(renter.body)).not.toContain('password');
 
-    const stored = await db.orm.public.User.where({ email: 'renter@example.com' }).first();
+    const stored = await db.orm.public.User.where({
+      email: 'renter@example.com',
+    }).first();
     expect(stored?.password).toMatch(/^scrypt\$/);
     expect(stored?.password).not.toContain(PASSWORD);
 
@@ -54,9 +75,9 @@ describe('Authentication and account settings (e2e)', () => {
       user: { id: renter.body.data.user.id, role: 'renter' },
     });
 
-    const refreshRows = await db.orm.public.RefreshToken
-      .where({ userId: renter.body.data.user.id })
-      .all();
+    const refreshRows = await db.orm.public.RefreshToken.where({
+      userId: renter.body.data.user.id,
+    }).all();
     expect(refreshRows).toHaveLength(1);
     expect(refreshRows[0].tokenHash).toBe(
       createHash('sha256').update(login.body.data.refreshToken).digest('hex'),
@@ -67,16 +88,31 @@ describe('Authentication and account settings (e2e)', () => {
   it('AUTH-02/03/04 rejects duplicates, invalid roles, weak input, and mass assignment', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/auth/register')
-      .send({ name: 'First User', email: 'same@example.com', password: PASSWORD, role: 'renter' })
+      .send({
+        name: 'First User',
+        email: 'same@example.com',
+        password: PASSWORD,
+        role: 'renter',
+      })
       .expect(201);
 
     await request(app.getHttpServer())
       .post('/api/v1/auth/register')
-      .send({ name: 'Second User', email: 'SAME@example.com', password: PASSWORD, role: 'mate' })
+      .send({
+        name: 'Second User',
+        email: 'SAME@example.com',
+        password: PASSWORD,
+        role: 'mate',
+      })
       .expect(409);
     await request(app.getHttpServer())
       .post('/api/v1/auth/register')
-      .send({ name: 'Admin', email: 'admin@example.com', password: PASSWORD, role: 'admin' })
+      .send({
+        name: 'Admin',
+        email: 'admin@example.com',
+        password: PASSWORD,
+        role: 'admin',
+      })
       .expect(400);
     await request(app.getHttpServer())
       .post('/api/v1/auth/register')
@@ -93,8 +129,12 @@ describe('Authentication and account settings (e2e)', () => {
       })
       .expect(400);
 
-    expect(await db.orm.public.User.where({ email: 'same@example.com' }).all()).toHaveLength(1);
-    expect(await db.orm.public.User.where({ email: 'admin@example.com' }).first()).toBeNull();
+    expect(
+      await db.orm.public.User.where({ email: 'same@example.com' }).all(),
+    ).toHaveLength(1);
+    expect(
+      await db.orm.public.User.where({ email: 'admin@example.com' }).first(),
+    ).toBeNull();
   });
 
   it('AUTH-07/08 rejects bad credentials and banned or inactive accounts', async () => {
@@ -105,13 +145,17 @@ describe('Authentication and account settings (e2e)', () => {
       .send({ email: data.renter1.email, password: 'wrong-password' })
       .expect(401);
 
-    await db.orm.public.User.where({ id: data.renter1.id }).update({ isBanned: true });
+    await db.orm.public.User.where({ id: data.renter1.id }).update({
+      isBanned: true,
+    });
     await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: data.renter1.email, password: PASSWORD })
       .expect(403);
 
-    await db.orm.public.User.where({ id: data.renter2.id }).update({ isActive: false });
+    await db.orm.public.User.where({ id: data.renter2.id }).update({
+      isActive: false,
+    });
     await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: data.renter2.email, password: PASSWORD })
@@ -132,11 +176,16 @@ describe('Authentication and account settings (e2e)', () => {
       .set('Authorization', `Bearer ${login.accessToken}`)
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data.user).toMatchObject({ id: data.renter1.id, email: data.renter1.email });
+        expect(body.data.user).toMatchObject({
+          id: data.renter1.id,
+          email: data.renter1.email,
+        });
         expect(JSON.stringify(body)).not.toContain('password');
       });
 
-    await db.orm.public.User.where({ id: data.renter1.id }).update({ isBanned: true });
+    await db.orm.public.User.where({ id: data.renter1.id }).update({
+      isBanned: true,
+    });
     await request(app.getHttpServer())
       .get('/api/v1/auth/me')
       .set('Authorization', `Bearer ${login.accessToken}`)
@@ -162,26 +211,39 @@ describe('Authentication and account settings (e2e)', () => {
       .send({ refreshToken: refreshed.body.data.refreshToken })
       .expect(201);
 
-    const rows = await db.orm.public.RefreshToken.where({ userId: data.renter1.id }).all();
+    const rows = await db.orm.public.RefreshToken.where({
+      userId: data.renter1.id,
+    }).all();
     expect(rows).toHaveLength(3);
     expect(rows.filter((row) => row.revokedAt === null)).toHaveLength(1);
-    expect(rows.find((row) => row.tokenHash === hash(first.refreshToken))?.replacedByJti).toEqual(
-      expect.any(String),
-    );
+    expect(
+      rows.find((row) => row.tokenHash === hash(first.refreshToken))
+        ?.replacedByJti,
+    ).toEqual(expect.any(String));
   });
 
   it('AUTH-14/20 rejects invalid refresh payloads without creating sessions', async () => {
     const data = await seedTestDatabase();
     const login = await loginAs(app, data.renter1.email);
 
-    for (const body of [{}, { refreshToken: '' }, { refreshToken: 42 }, { refreshToken: 'not-a-jwt' }]) {
-      await request(app.getHttpServer()).post('/api/v1/auth/refresh').send(body).expect(400);
+    for (const body of [
+      {},
+      { refreshToken: '' },
+      { refreshToken: 42 },
+      { refreshToken: 'not-a-jwt' },
+    ]) {
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/refresh')
+        .send(body)
+        .expect(400);
     }
     await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
       .send({ refreshToken: login.accessToken })
       .expect(401);
-    expect(await db.orm.public.RefreshToken.where({ userId: data.renter1.id }).all()).toHaveLength(1);
+    expect(
+      await db.orm.public.RefreshToken.where({ userId: data.renter1.id }).all(),
+    ).toHaveLength(1);
   });
 
   it('AUTH-16/17/18/19/21 logs out by refresh token without requiring access and remains idempotent', async () => {
@@ -189,7 +251,12 @@ describe('Authentication and account settings (e2e)', () => {
     const sessionA = await loginAs(app, data.renter1.email);
     const sessionB = await loginAs(app, data.renter1.email);
     const expiredAccess = await new JwtService().signAsync(
-      { sub: data.renter1.id, role: 'renter', jti: 'expired-e2e', type: 'access' },
+      {
+        sub: data.renter1.id,
+        role: 'renter',
+        jti: 'expired-e2e',
+        type: 'access',
+      },
       { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '-1s' },
     );
 
@@ -244,7 +311,9 @@ describe('Authentication and account settings (e2e)', () => {
       .get('/api/v1/users/me')
       .set(auth)
       .expect(200)
-      .expect(({ body }) => expect(JSON.stringify(body)).not.toContain('password'));
+      .expect(({ body }) =>
+        expect(JSON.stringify(body)).not.toContain('password'),
+      );
     await request(app.getHttpServer())
       .patch('/api/v1/users/me')
       .set(auth)
@@ -256,7 +325,9 @@ describe('Authentication and account settings (e2e)', () => {
       .set(auth)
       .send({ name: 'Valid', role: 'admin' })
       .expect(400);
-    expect((await db.orm.public.User.where({ id: data.renter1.id }).first())?.role).toBe('renter');
+    expect(
+      (await db.orm.public.User.where({ id: data.renter1.id }).first())?.role,
+    ).toBe('renter');
   });
 
   it('USER-04/05 changes a normalized email only after password verification', async () => {

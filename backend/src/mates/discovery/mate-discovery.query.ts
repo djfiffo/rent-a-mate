@@ -4,7 +4,9 @@ import type { MateDiscoveryQuery } from './mate-discovery.types.js';
 const DEFAULT_LIMIT = 20;
 const DEFAULT_SORT = '-createdAt' as const;
 
-export const normalizeMateDiscoveryQuery = (input: ListMatesQueryDto): MateDiscoveryQuery => {
+export const normalizeMateDiscoveryQuery = (
+  input: ListMatesQueryDto,
+): MateDiscoveryQuery => {
   const page = input.page ?? 1;
   const limit = input.limit ?? DEFAULT_LIMIT;
 
