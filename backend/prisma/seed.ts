@@ -194,6 +194,19 @@ async function main() {
       }
     }
     console.log('✅ Demo mates seeded');
+
+    const renterEmail = 'pat.demo@matefor.invalid';
+    const existingRenter = await db.orm.public.User.where({ email: renterEmail }).first();
+    if (!existingRenter) {
+      await db.orm.public.User.create({
+        name: 'Pat Demo',
+        email: renterEmail,
+        password,
+        role: 'renter',
+        isVerified: true,
+      });
+    }
+    console.log('✅ Demo renter seeded');
   }
 
   console.log('🎉 Database seed completed!');
