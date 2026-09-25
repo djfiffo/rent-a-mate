@@ -15,7 +15,8 @@ import type {
 @Injectable()
 export class NotificationsService {
   constructor(
-    @Inject(NOTIFICATIONS_DATABASE_TOKEN) private readonly database: NotificationDatabase,
+    @Inject(NOTIFICATIONS_DATABASE_TOKEN)
+    private readonly database: NotificationDatabase,
   ) {}
 
   /**
@@ -35,16 +36,27 @@ export class NotificationsService {
     });
   }
 
-  async findMine(userId: number, unreadOnly = false): Promise<NotificationRecord[]> {
+  async findMine(
+    userId: number,
+    unreadOnly = false,
+  ): Promise<NotificationRecord[]> {
     const query = this.database.orm.public.Notification.where({ userId });
-    const notifications = await (unreadOnly ? query.where({ isRead: false }) : query).all();
+    const notifications = await (
+      unreadOnly ? query.where({ isRead: false }) : query
+    ).all();
     return [...notifications].sort(
-      (a, b) => this.toEpochMillis(b.createdAt) - this.toEpochMillis(a.createdAt),
+      (a, b) =>
+        this.toEpochMillis(b.createdAt) - this.toEpochMillis(a.createdAt),
     );
   }
 
-  async markRead(userId: number, notificationId: number): Promise<NotificationRecord> {
-    const notification = await this.database.orm.public.Notification.where({ id: notificationId }).first();
+  async markRead(
+    userId: number,
+    notificationId: number,
+  ): Promise<NotificationRecord> {
+    const notification = await this.database.orm.public.Notification.where({
+      id: notificationId,
+    }).first();
     if (!notification) {
       throw new NotFoundException('Notification not found');
     }
@@ -55,9 +67,9 @@ export class NotificationsService {
       return notification;
     }
 
-    const updated = await this.database.orm.public.Notification
-      .where({ id: notificationId })
-      .update({ isRead: true });
+    const updated = await this.database.orm.public.Notification.where({
+      id: notificationId,
+    }).update({ isRead: true });
 
     if (!updated) {
       throw new NotFoundException('Notification not found');
@@ -66,9 +78,10 @@ export class NotificationsService {
   }
 
   async markAllRead(userId: number): Promise<{ updated: number }> {
-    const updated = await this.database.orm.public.Notification
-      .where({ userId, isRead: false })
-      .updateAndCount({ isRead: true });
+    const updated = await this.database.orm.public.Notification.where({
+      userId,
+      isRead: false,
+    }).updateAndCount({ isRead: true });
 
     return { updated };
   }

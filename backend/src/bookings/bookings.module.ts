@@ -10,8 +10,17 @@ import { BookingsService } from './bookings.service.js';
 import { BOOKINGS_DATABASE_TOKEN } from './bookings.tokens.js';
 
 @Module({
-  imports: [AuthModule, AuthorizationModule, MatesModule, NotificationsModule, PaymentsModule],
+  imports: [
+    AuthModule,
+    AuthorizationModule,
+    MatesModule,
+    NotificationsModule,
+    PaymentsModule,
+  ],
   controllers: [BookingsController],
-  providers: [BookingsService, { provide: BOOKINGS_DATABASE_TOKEN, useValue: db }],
+  providers: [
+    BookingsService,
+    { provide: BOOKINGS_DATABASE_TOKEN, useValue: db },
+  ],
 })
 export class BookingsModule {}

@@ -40,9 +40,12 @@ export class AdminService {
     let users: any = db.orm.public.User;
 
     if (query.role) users = users.where({ role: query.role });
-    if (query.isBanned !== undefined) users = users.where({ isBanned: query.isBanned });
-    if (query.isActive !== undefined) users = users.where({ isActive: query.isActive });
-    if (query.isVerified !== undefined) users = users.where({ isVerified: query.isVerified });
+    if (query.isBanned !== undefined)
+      users = users.where({ isBanned: query.isBanned });
+    if (query.isActive !== undefined)
+      users = users.where({ isActive: query.isActive });
+    if (query.isVerified !== undefined)
+      users = users.where({ isVerified: query.isVerified });
     // Search spans name and email. Keep the predicate in application space
     // because this façade has no public OR combinator yet; this is an
     // admin-only moderation read and never returns password hashes.
@@ -51,20 +54,24 @@ export class AdminService {
     if (materializedForSearch) {
       const materialized: any[] = (await users.all()) ?? [];
       const needle = query.q!.toLowerCase();
-      const filtered = materialized.filter((u: any) =>
-        String(u.name).toLowerCase().includes(needle) ||
-        String(u.email).toLowerCase().includes(needle),
+      const filtered = materialized.filter(
+        (u: any) =>
+          String(u.name).toLowerCase().includes(needle) ||
+          String(u.email).toLowerCase().includes(needle),
       );
-      filtered.sort((a: any, b: any) => this.toEpochMillis(b.createdAt) - this.toEpochMillis(a.createdAt));
+      filtered.sort(
+        (a: any, b: any) =>
+          this.toEpochMillis(b.createdAt) - this.toEpochMillis(a.createdAt),
+      );
       all = filtered;
     }
 
-    const total = all
-      ? all.length
-      : await this.count(users);
+    const total = all ? all.length : await this.count(users);
     const rows = all
       ? all.slice(offset, offset + limit)
-      : await this.pageQuery(users, limit, offset, (q: any) => q.orderBy((u: any) => u.createdAt.desc()));
+      : await this.pageQuery(users, limit, offset, (q: any) =>
+          q.orderBy((u: any) => u.createdAt.desc()),
+        );
 
     return {
       items: rows.map((user) => this.toSafeUser(user)),
@@ -72,7 +79,11 @@ export class AdminService {
     };
   }
 
-  async banUser(adminId: number, userId: number, reason: string): Promise<AdminSafeUser> {
+  async banUser(
+    adminId: number,
+    userId: number,
+    reason: string,
+  ): Promise<AdminSafeUser> {
     if (adminId === userId) {
       throw new ForbiddenException('An admin cannot ban their own account');
     }
@@ -81,30 +92,36 @@ export class AdminService {
 
     await this.revokeAllActiveRefreshTokens(userId, now);
 
-    const updated = await (db.orm.public.User as any).where({ id: userId }).update({
-      isBanned: true,
-      bannedAt: now,
-      banReason: reason.trim(),
-    });
+    const updated = await (db.orm.public.User as any)
+      .where({ id: userId })
+      .update({
+        isBanned: true,
+        bannedAt: now,
+        banReason: reason.trim(),
+      });
     return this.toSafeUser(updated);
   }
 
   async unbanUser(userId: number): Promise<AdminSafeUser> {
     await this.requireUser(userId);
-    const updated = await (db.orm.public.User as any).where({ id: userId }).update({
-      isBanned: false,
-      bannedAt: null,
-      banReason: null,
-    });
+    const updated = await (db.orm.public.User as any)
+      .where({ id: userId })
+      .update({
+        isBanned: false,
+        bannedAt: null,
+        banReason: null,
+      });
     return this.toSafeUser(updated);
   }
 
   async activateUser(userId: number): Promise<AdminSafeUser> {
     const user = await this.requireUser(userId);
-    const updated = await (db.orm.public.User as any).where({ id: userId }).update({
-      isActive: true,
-      deactivatedAt: null,
-    });
+    const updated = await (db.orm.public.User as any)
+      .where({ id: userId })
+      .update({
+        isActive: true,
+        deactivatedAt: null,
+      });
 
     if (user.role === 'mate') {
       await db.orm.public.Mate.where({ userId }).update({ isActive: true });
@@ -115,12 +132,16 @@ export class AdminService {
   async verifyUser(userId: number): Promise<AdminSafeUser> {
     const user = await this.requireUser(userId);
     if (user.role !== 'mate') {
-      throw new UnprocessableEntityException('Only mate accounts can be verified');
+      throw new UnprocessableEntityException(
+        'Only mate accounts can be verified',
+      );
     }
-    const updated = await (db.orm.public.User as any).where({ id: userId }).update({
-      isVerified: true,
-      verifiedAt: Temporal.Now.instant(),
-    });
+    const updated = await (db.orm.public.User as any)
+      .where({ id: userId })
+      .update({
+        isVerified: true,
+        verifiedAt: Temporal.Now.instant(),
+      });
     return this.toSafeUser(updated);
   }
 
@@ -147,7 +168,9 @@ export class AdminService {
       bookings = bookings.where({ date: instant });
     }
     if (query.dateFrom) {
-      bookings = bookings.where((b: any) => b.date.gte(this.parseDateInstant(query.dateFrom!)));
+      bookings = bookings.where((b: any) =>
+        b.date.gte(this.parseDateInstant(query.dateFrom!)),
+      );
     }
     if (query.dateTo) {
       const end = this.parseCalendarDate(query.dateTo!, 'dateTo')
@@ -158,22 +181,26 @@ export class AdminService {
     }
 
     const total = await this.count(bookings);
-    const paged = await this.pageQuery(
-      bookings,
-      limit,
-      offset,
-      (q: any) => q.orderBy((b: any) => b.createdAt.desc()),
+    const paged = await this.pageQuery(bookings, limit, offset, (q: any) =>
+      q.orderBy((b: any) => b.createdAt.desc()),
     );
     if (!paged.length) {
-      return { items: [], meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+      return {
+        items: [],
+        meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      };
     }
 
     const renterIds = [...new Set(paged.map((b) => b.renterId))];
     const mateIds = [...new Set(paged.map((b) => b.mateId))];
     const activityIds = [...new Set(paged.map((b) => b.activityId))];
-    const mates = await db.orm.public.Mate.where((m: any) => m.id.in(mateIds)).all();
+    const mates = await db.orm.public.Mate.where((m: any) =>
+      m.id.in(mateIds),
+    ).all();
     const mateMap = new Map(mates.map((m: any) => [m.id, m]));
-    const allUserIds = [...new Set([...renterIds, ...mates.map((m: any) => m.userId)])];
+    const allUserIds = [
+      ...new Set([...renterIds, ...mates.map((m: any) => m.userId)]),
+    ];
     const [users, activities] = await Promise.all([
       db.orm.public.User.where((u: any) => u.id.in(allUserIds)).all(),
       db.orm.public.Activity.where((a: any) => a.id.in(activityIds)).all(),
@@ -200,7 +227,10 @@ export class AdminService {
         updatedAt: booking.updatedAt,
       } satisfies AdminBookingItem;
     });
-    return { items, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return {
+      items,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async createReport(
@@ -208,7 +238,11 @@ export class AdminService {
     input: { targetType: ReportTargetType; targetId: number; reason: string },
   ): Promise<AdminReport> {
     const reporter = await this.requireUser(reporterId);
-    await this.validateReportTarget(reporterId, input.targetType, input.targetId);
+    await this.validateReportTarget(
+      reporterId,
+      input.targetType,
+      input.targetId,
+    );
     const report = await (db.orm.public as any).Report.create({
       reporterId,
       targetType: input.targetType,
@@ -230,11 +264,8 @@ export class AdminService {
     let reports: any = (db.orm.public as any).Report;
     if (query.status) reports = reports.where({ status: query.status });
     const total = await this.count(reports);
-    const rows = await this.pageQuery(
-      reports,
-      limit,
-      offset,
-      (q: any) => q.orderBy((r: any) => r.createdAt.desc()),
+    const rows = await this.pageQuery(reports, limit, offset, (q: any) =>
+      q.orderBy((r: any) => r.createdAt.desc()),
     );
     const reporterIds = [...new Set(rows.map((r) => r.reporterId))];
     const reporters = reporterIds.length
@@ -242,7 +273,9 @@ export class AdminService {
       : [];
     const reporterMap = new Map(reporters.map((u: any) => [u.id, u]));
     return {
-      items: rows.map((report) => this.toAdminReport(report, reporterMap.get(report.reporterId))),
+      items: rows.map((report) =>
+        this.toAdminReport(report, reporterMap.get(report.reporterId)),
+      ),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
@@ -253,9 +286,12 @@ export class AdminService {
     input: { status: Exclude<ReportStatus, 'open'>; resolutionNote?: string },
   ): Promise<AdminReport> {
     const report = await this.requireReport(reportId);
-    const updated = await (db.orm.public as any).Report.where({ id: reportId }).update({
+    const updated = await (db.orm.public as any).Report.where({
+      id: reportId,
+    }).update({
       status: input.status,
-      resolutionNote: input.resolutionNote?.trim() ?? report.resolutionNote ?? null,
+      resolutionNote:
+        input.resolutionNote?.trim() ?? report.resolutionNote ?? null,
       resolvedById: adminId,
       resolvedAt: Temporal.Now.instant(),
     });
@@ -263,8 +299,13 @@ export class AdminService {
     return this.toAdminReport(updated, reporter);
   }
 
-  async getAnalytics(query: { from?: string; to?: string }): Promise<AnalyticsResult> {
-    const today = Temporal.Now.instant().toZonedDateTimeISO(TIMEZONE).toPlainDate();
+  async getAnalytics(query: {
+    from?: string;
+    to?: string;
+  }): Promise<AnalyticsResult> {
+    const today = Temporal.Now.instant()
+      .toZonedDateTimeISO(TIMEZONE)
+      .toPlainDate();
     const toDate = query.to ? this.parseCalendarDate(query.to, 'to') : today;
     const fromDate = query.from
       ? this.parseCalendarDate(query.from, 'from')
@@ -277,17 +318,20 @@ export class AdminService {
       throw new BadRequestException('Date range must not exceed 365 days');
     }
 
-    const fromInstant = fromDate.toZonedDateTime({ timeZone: TIMEZONE, plainTime: '00:00' }).toInstant();
-    const toInstant = toDate.add({ days: 1 }).toZonedDateTime({ timeZone: TIMEZONE, plainTime: '00:00' }).toInstant();
-    const bookingRange: any = db.orm.public.Booking
-      .where((b: any) => b.createdAt.gte(fromInstant))
-      .where((b: any) => b.createdAt.lt(toInstant));
-    const paymentRange: any = db.orm.public.Payment
-      .where({ status: 'paid' })
+    const fromInstant = fromDate
+      .toZonedDateTime({ timeZone: TIMEZONE, plainTime: '00:00' })
+      .toInstant();
+    const toInstant = toDate
+      .add({ days: 1 })
+      .toZonedDateTime({ timeZone: TIMEZONE, plainTime: '00:00' })
+      .toInstant();
+    const bookingRange: any = db.orm.public.Booking.where((b: any) =>
+      b.createdAt.gte(fromInstant),
+    ).where((b: any) => b.createdAt.lt(toInstant));
+    const paymentRange: any = db.orm.public.Payment.where({ status: 'paid' })
       .where((p: any) => p.paidAt.gte(fromInstant))
       .where((p: any) => p.paidAt.lt(toInstant));
-    const userRange: any = db.orm.public.User
-      .where({ isActive: true })
+    const userRange: any = db.orm.public.User.where({ isActive: true })
       .where((u: any) => u.createdAt.gte(fromInstant))
       .where((u: any) => u.createdAt.lt(toInstant));
 
@@ -305,12 +349,20 @@ export class AdminService {
     const dailyMap = new Map<string, DailyAnalytics>();
     let cursor = fromDate;
     while (Temporal.PlainDate.compare(cursor, toDate) <= 0) {
-      dailyMap.set(cursor.toString(), { date: cursor.toString(), bookings: 0, paidRevenue: 0, newUsers: 0 });
+      dailyMap.set(cursor.toString(), {
+        date: cursor.toString(),
+        bookings: 0,
+        paidRevenue: 0,
+        newUsers: 0,
+      });
       cursor = cursor.add({ days: 1 });
     }
-    for (const row of daily.bookings) dailyMap.get(String(row.date))!.bookings = Number(row.value);
-    for (const row of daily.revenue) dailyMap.get(String(row.date))!.paidRevenue = Number(row.value);
-    for (const row of daily.users) dailyMap.get(String(row.date))!.newUsers = Number(row.value);
+    for (const row of daily.bookings)
+      dailyMap.get(String(row.date))!.bookings = Number(row.value);
+    for (const row of daily.revenue)
+      dailyMap.get(String(row.date))!.paidRevenue = Number(row.value);
+    for (const row of daily.users)
+      dailyMap.get(String(row.date))!.newUsers = Number(row.value);
     return {
       range: { from: fromDate.toString(), to: toDate.toString() },
       bookingCounts,
@@ -320,29 +372,45 @@ export class AdminService {
     };
   }
 
-  private async aggregateBookingCounts(query: any): Promise<BookingCountsByStatus> {
-    const result: BookingCountsByStatus = { pending: 0, confirmed: 0, completed: 0, cancelled: 0 };
+  private async aggregateBookingCounts(
+    query: any,
+  ): Promise<BookingCountsByStatus> {
+    const result: BookingCountsByStatus = {
+      pending: 0,
+      confirmed: 0,
+      completed: 0,
+      cancelled: 0,
+    };
     if (typeof query.groupBy === 'function') {
-      const grouped = await query.groupBy('status').aggregate((a: any) => ({ total: a.count() }));
+      const grouped = await query
+        .groupBy('status')
+        .aggregate((a: any) => ({ total: a.count() }));
       for (const row of grouped) {
-        if (row.status in result) result[row.status as keyof BookingCountsByStatus] = Number(row.total);
+        if (row.status in result)
+          result[row.status as keyof BookingCountsByStatus] = Number(row.total);
       }
       return result;
     }
     // Test doubles and pre-aggregate runtimes may not expose groupBy. The
     // production Prisma façade does, so this branch is only a compatibility fallback.
     for (const row of await query.all()) {
-      if (row.status in result) result[row.status as keyof BookingCountsByStatus]++;
+      if (row.status in result)
+        result[row.status as keyof BookingCountsByStatus]++;
     }
     return result;
   }
 
   private async aggregateRevenue(query: any): Promise<number> {
     if (typeof query.aggregate === 'function') {
-      const result = await query.aggregate((a: any) => ({ total: a.sum('amount') }));
+      const result = await query.aggregate((a: any) => ({
+        total: a.sum('amount'),
+      }));
       return Number(result.total ?? 0);
     }
-    return (await query.all()).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+    return (await query.all()).reduce(
+      (sum: number, p: any) => sum + Number(p.amount),
+      0,
+    );
   }
 
   private async aggregateCount(query: any): Promise<number> {
@@ -357,9 +425,14 @@ export class AdminService {
     fromDate: Temporal.PlainDate,
     toDate: Temporal.PlainDate,
     boundedQueries?: { bookings: any; payments: any; users: any },
-  ): Promise<{ bookings: { date: string; value: number }[]; revenue: { date: string; value: number }[]; users: { date: string; value: number }[] }> {
+  ): Promise<{
+    bookings: { date: string; value: number }[];
+    revenue: { date: string; value: number }[];
+    users: { date: string; value: number }[];
+  }> {
     const daily = (date: unknown) => {
-      if (date instanceof Temporal.Instant) return date.toZonedDateTimeISO(TIMEZONE).toPlainDate().toString();
+      if (date instanceof Temporal.Instant)
+        return date.toZonedDateTimeISO(TIMEZONE).toPlainDate().toString();
       return String(date).slice(0, 10);
     };
     const rangeRows = async (
@@ -381,7 +454,10 @@ export class AdminService {
       return [...map].map(([date, value]) => ({ date, value }));
     };
     return {
-      bookings: await rangeRows(boundedQueries?.bookings ?? (db.orm.public as any).Booking, 'createdAt'),
+      bookings: await rangeRows(
+        boundedQueries?.bookings ?? (db.orm.public as any).Booking,
+        'createdAt',
+      ),
       revenue: await rangeRows(
         boundedQueries?.payments ?? (db.orm.public as any).Payment,
         'paidAt',
@@ -397,33 +473,50 @@ export class AdminService {
     };
   }
 
-  private async validateReportTarget(reporterId: number, targetType: ReportTargetType, targetId: number): Promise<void> {
+  private async validateReportTarget(
+    reporterId: number,
+    targetType: ReportTargetType,
+    targetId: number,
+  ): Promise<void> {
     if (targetType === 'user') {
       await this.requireUser(targetId);
-      if (reporterId === targetId) throw new BadRequestException('You cannot report your own account');
+      if (reporterId === targetId)
+        throw new BadRequestException('You cannot report your own account');
       return;
     }
     if (targetType === 'mate') {
       const mate = await db.orm.public.Mate.where({ id: targetId }).first();
       if (!mate) throw new NotFoundException('Report target not found');
-      if (mate.userId === reporterId) throw new BadRequestException('You cannot report your own profile');
+      if (mate.userId === reporterId)
+        throw new BadRequestException('You cannot report your own profile');
       return;
     }
     if (targetType === 'booking') {
-      const booking = await db.orm.public.Booking.where({ id: targetId }).first();
+      const booking = await db.orm.public.Booking.where({
+        id: targetId,
+      }).first();
       if (!booking) throw new NotFoundException('Report target not found');
-      const mate = await db.orm.public.Mate.where({ id: booking.mateId }).first();
+      const mate = await db.orm.public.Mate.where({
+        id: booking.mateId,
+      }).first();
       if (booking.renterId !== reporterId && mate?.userId !== reporterId) {
-        throw new ForbiddenException('You can only report a booking you participated in');
+        throw new ForbiddenException(
+          'You can only report a booking you participated in',
+        );
       }
       return;
     }
     if (targetType === 'review') {
-      const review = await (db.orm.public as any).Review.where({ id: targetId }).first();
+      const review = await (db.orm.public as any).Review.where({
+        id: targetId,
+      }).first();
       if (!review) throw new NotFoundException('Report target not found');
       if (review.renterId !== reporterId) {
-        const mate = await db.orm.public.Mate.where({ id: review.mateId }).first();
-        if (mate?.userId !== reporterId) throw new ForbiddenException('You can only report a related review');
+        const mate = await db.orm.public.Mate.where({
+          id: review.mateId,
+        }).first();
+        if (mate?.userId !== reporterId)
+          throw new ForbiddenException('You can only report a related review');
       }
       return;
     }
@@ -433,9 +526,16 @@ export class AdminService {
     if (!messageModel) throw new NotFoundException('Report target not found');
     const message = await messageModel.where({ id: targetId }).first();
     if (!message) throw new NotFoundException('Report target not found');
-    const booking = await db.orm.public.Booking.where({ id: message.bookingId }).first();
-    const mate = booking ? await db.orm.public.Mate.where({ id: booking.mateId }).first() : null;
-    if (!booking || (booking.renterId !== reporterId && mate?.userId !== reporterId)) {
+    const booking = await db.orm.public.Booking.where({
+      id: message.bookingId,
+    }).first();
+    const mate = booking
+      ? await db.orm.public.Mate.where({ id: booking.mateId }).first()
+      : null;
+    if (
+      !booking ||
+      (booking.renterId !== reporterId && mate?.userId !== reporterId)
+    ) {
       throw new ForbiddenException('You can only report a related message');
     }
   }
@@ -447,7 +547,9 @@ export class AdminService {
   }
 
   private async requireReport(reportId: number): Promise<any> {
-    const report = await (db.orm.public as any).Report.where({ id: reportId }).first();
+    const report = await (db.orm.public as any).Report.where({
+      id: reportId,
+    }).first();
     if (!report) throw new NotFoundException('Report not found');
     return report;
   }
@@ -484,24 +586,41 @@ export class AdminService {
 
   private async count(query: any): Promise<number> {
     if (typeof query.aggregate === 'function') {
-      const result = await query.aggregate((aggregate: any) => ({ total: aggregate.count() }));
+      const result = await query.aggregate((aggregate: any) => ({
+        total: aggregate.count(),
+      }));
       return Number(result.total);
     }
     return (await query.all()).length;
   }
 
-  private async revokeAllActiveRefreshTokens(userId: number, revokedAt: Temporal.Instant): Promise<void> {
+  private async revokeAllActiveRefreshTokens(
+    userId: number,
+    revokedAt: Temporal.Instant,
+  ): Promise<void> {
     const refreshTokens = db.orm.public.RefreshToken;
-    const activeTokens = await refreshTokens.where({ userId, revokedAt: null }).all();
+    const activeTokens = await refreshTokens
+      .where({ userId, revokedAt: null })
+      .all();
     await Promise.all(
       activeTokens.map((token) =>
-        refreshTokens.where({ id: token.id, revokedAt: null }).update({ revokedAt }),
+        refreshTokens
+          .where({ id: token.id, revokedAt: null })
+          .update({ revokedAt }),
       ),
     );
   }
 
-  private async pageQuery(query: any, limit: number, offset: number, order: (q: any) => any): Promise<any[]> {
-    if (typeof query.orderBy === 'function' && typeof query.limit === 'function') {
+  private async pageQuery(
+    query: any,
+    limit: number,
+    offset: number,
+    order: (q: any) => any,
+  ): Promise<any[]> {
+    if (
+      typeof query.orderBy === 'function' &&
+      typeof query.limit === 'function'
+    ) {
       const ordered = order(query);
       const limited = ordered.limit(limit);
       if (typeof limited.offset === 'function') {
@@ -514,7 +633,10 @@ export class AdminService {
       return rows.slice(offset, offset + limit);
     }
     const rows = await query.all();
-    rows.sort((a: any, b: any) => this.toEpochMillis(b.createdAt) - this.toEpochMillis(a.createdAt));
+    rows.sort(
+      (a: any, b: any) =>
+        this.toEpochMillis(b.createdAt) - this.toEpochMillis(a.createdAt),
+    );
     return rows.slice(offset, offset + limit);
   }
 
@@ -529,7 +651,9 @@ export class AdminService {
     try {
       return Temporal.PlainDate.from(value);
     } catch {
-      throw new BadRequestException(`${field} must be a valid calendar date in YYYY-MM-DD format`);
+      throw new BadRequestException(
+        `${field} must be a valid calendar date in YYYY-MM-DD format`,
+      );
     }
   }
 

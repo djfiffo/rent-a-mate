@@ -1,22 +1,15 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import type { Socket } from 'socket.io';
 import { db } from '../prisma/db.js';
+import { AuthService } from '../auth/auth.service.js';
 import type { ChatSocketData } from './chat.types.js';
-
-type AccessTokenPayload = {
-  sub: number;
-  role: string;
-  type: 'access' | 'refresh';
-};
 
 /**
  * Authenticates a socket during `handleConnection`, mirroring
  * `JwtStrategy.validate()` (see auth/jwt.strategy.ts) rule-for-rule: the
- * same access-token type check and the same isBanned/isActive gate — just
- * reading the token from `handshake.auth.token` instead of an
- * `Authorization` header, since HTTP's `PassportStrategy`/`ExtractJwt`
- * machinery only understands HTTP requests, not the WebSocket handshake.
+ * same isBanned/isActive gate, after consuming a short-lived single-use
+ * ticket. The browser receives that ticket from the same-origin BFF route;
+ * it never reads or sends the access JWT over the socket.
  *
  * This is deliberately NOT a NestJS `CanActivate` guard bound with
  * `@UseGuards` per-message: authentication should happen exactly once, when
@@ -26,7 +19,7 @@ type AccessTokenPayload = {
 export class WsJwtGuard {
   private readonly logger = new Logger(WsJwtGuard.name);
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly authService: AuthService) {}
 
   /**
    * Verifies `client`'s handshake token and returns the authenticated user,
@@ -36,21 +29,11 @@ export class WsJwtGuard {
   async authenticate(client: Socket): Promise<ChatSocketData['user']> {
     const token = this.extractToken(client);
     if (!token) {
-      throw new UnauthorizedException('Missing token');
+      throw new UnauthorizedException('Missing socket ticket');
     }
 
-    let payload: AccessTokenPayload;
-    try {
-      payload = await this.jwtService.verifyAsync<AccessTokenPayload>(token);
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-
-    if (payload.type !== 'access') {
-      throw new UnauthorizedException('Invalid access token');
-    }
-
-    const user = await db.orm.public.User.where({ id: payload.sub }).first();
+    const principal = await this.authService.consumeSocketTicket(token);
+    const user = await db.orm.public.User.where({ id: principal.id }).first();
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -61,7 +44,10 @@ export class WsJwtGuard {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    return { id: payload.sub, role: user.role as ChatSocketData['user']['role'] };
+    return {
+      id: principal.id,
+      role: user.role as ChatSocketData['user']['role'],
+    };
   }
 
   /** Disconnects `client` after emitting an `error` event with `message`. */
@@ -72,7 +58,7 @@ export class WsJwtGuard {
   }
 
   private extractToken(client: Socket): string | undefined {
-    const token = client.handshake.auth?.['token'];
+    const token = client.handshake.auth?.['ticket'];
     if (typeof token === 'string' && token.length > 0) {
       return token;
     }

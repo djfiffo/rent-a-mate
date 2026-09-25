@@ -6,7 +6,6 @@ export class CreateMatePhotoDto {
   @MaxLength(2048)
   @Matches(/^(https?:\/\/|\/|data:image\/)[^\s]+$/i)
   url!: string;
-
 }
 
 /** Multipart requests provide the file separately and may omit URL metadata. */
@@ -16,5 +15,4 @@ export class UploadMatePhotoDto {
   @MaxLength(2048)
   @Matches(/^(https?:\/\/|\/|data:image\/)[^\s]+$/i)
   url?: string;
-
 }

@@ -17,7 +17,10 @@ async function bootstrap() {
     bodyParser: false,
   });
 
-  app.use(`/${apiPrefix}/webhooks/stripe`, express.raw({ type: 'application/json' }));
+  app.use(
+    `/${apiPrefix}/webhooks/stripe`,
+    express.raw({ type: 'application/json' }),
+  );
   app.use(express.json());
 
   app.useGlobalPipes(
@@ -31,7 +34,10 @@ async function bootstrap() {
   const corsOrigin = process.env['CORS_ORIGIN'];
   if (corsOrigin) {
     app.enableCors({
-      origin: corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean),
+      origin: corsOrigin
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
       methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Authorization', 'Content-Type'],
     });

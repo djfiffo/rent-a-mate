@@ -10,7 +10,8 @@ export interface AdminSafeUser {
   updatedAt: unknown;
 }
 
-export type ReportTargetType = 'user' | 'mate' | 'booking' | 'review' | 'message';
+export type ReportTargetType =
+  'user' | 'mate' | 'booking' | 'review' | 'message';
 export type ReportStatus = 'open' | 'reviewed' | 'dismissed' | 'actioned';
 
 export interface AdminReport {

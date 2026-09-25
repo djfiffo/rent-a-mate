@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { db } from '../src/prisma/db.js';
-import { PasswordHashService } from '../src/users/password.service.js';
+import { PasswordHashService } from '../src/shared/security/password/password-hash.service.js';
 
 type ProvinceData = {
   id: number;
@@ -199,7 +199,11 @@ async function main() {
   console.log('🎉 Database seed completed!');
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   console.error('❌ Seed failed:', error);
-  process.exit(1);
-});
+  process.exitCode = 1;
+} finally {
+  await db.close();
+}

@@ -8,7 +8,12 @@ import {
 } from '@nestjs/common';
 import type { AuthUser } from '../shared/types/auth-user.js';
 import { REVIEWS_DATABASE_TOKEN } from './reviews.tokens.js';
-import type { BookingRecordForReview, ReviewDatabase, ReviewDetail, ReviewRecord } from './reviews.types.js';
+import type {
+  BookingRecordForReview,
+  ReviewDatabase,
+  ReviewDetail,
+  ReviewRecord,
+} from './reviews.types.js';
 import { CreateReviewDto } from './dto/create-review.dto.js';
 import { UpdateReviewDto } from './dto/update-review.dto.js';
 
@@ -23,21 +28,29 @@ import { UpdateReviewDto } from './dto/update-review.dto.js';
  */
 @Injectable()
 export class ReviewsService {
-  constructor(@Inject(REVIEWS_DATABASE_TOKEN) private readonly database: ReviewDatabase) {}
+  constructor(
+    @Inject(REVIEWS_DATABASE_TOKEN) private readonly database: ReviewDatabase,
+  ) {}
 
   /**
    * Creates the single allowed review for a completed booking. Renter-owner
    * only. Renter/mate IDs are derived from the booking row rather than
    * trusted from the request, per spec 6.6.
    */
-  async create(user: AuthUser, bookingId: number, dto: CreateReviewDto): Promise<ReviewDetail> {
+  async create(
+    user: AuthUser,
+    bookingId: number,
+    dto: CreateReviewDto,
+  ): Promise<ReviewDetail> {
     const booking = await this.requireOwnedBooking(user, bookingId);
 
     if (booking.status !== 'completed') {
       throw new UnprocessableEntityException('BOOKING_NOT_COMPLETED');
     }
 
-    const existing = await this.database.orm.public.Review.where({ bookingId }).first();
+    const existing = await this.database.orm.public.Review.where({
+      bookingId,
+    }).first();
     if (existing) {
       throw new ConflictException('REVIEW_ALREADY_EXISTS');
     }
@@ -67,7 +80,11 @@ export class ReviewsService {
    * it) — an admin cannot edit someone else's review, only delete it (see
    * `remove`), per spec 6.6.
    */
-  async update(user: AuthUser, reviewId: number, dto: UpdateReviewDto): Promise<ReviewDetail> {
+  async update(
+    user: AuthUser,
+    reviewId: number,
+    dto: UpdateReviewDto,
+  ): Promise<ReviewDetail> {
     const review = await this.requireReview(reviewId);
     if (review.renterId !== user.id) {
       throw new NotFoundException('Review not found');
@@ -84,7 +101,9 @@ export class ReviewsService {
       update.comment = dto.comment;
     }
 
-    const updated = await this.database.orm.public.Review.where({ id: reviewId }).update(update);
+    const updated = await this.database.orm.public.Review.where({
+      id: reviewId,
+    }).update(update);
     if (!updated) {
       throw new NotFoundException('Review not found');
     }
@@ -100,7 +119,9 @@ export class ReviewsService {
     const isOwner = review.renterId === user.id;
     const isAdmin = user.role === 'admin';
     if (!isOwner && !isAdmin) {
-      throw new ForbiddenException('Only the review author or an admin can remove this review');
+      throw new ForbiddenException(
+        'Only the review author or an admin can remove this review',
+      );
     }
 
     await this.database.orm.public.Review.where({ id: reviewId }).delete();
@@ -113,8 +134,13 @@ export class ReviewsService {
    * to probe whether a booking id exists — mirrors
    * `PaymentsService.assertParticipant`.
    */
-  private async requireOwnedBooking(user: AuthUser, bookingId: number): Promise<BookingRecordForReview> {
-    const booking = await this.database.orm.public.Booking.where({ id: bookingId }).first();
+  private async requireOwnedBooking(
+    user: AuthUser,
+    bookingId: number,
+  ): Promise<BookingRecordForReview> {
+    const booking = await this.database.orm.public.Booking.where({
+      id: bookingId,
+    }).first();
     if (!booking || booking.renterId !== user.id) {
       throw new NotFoundException('Booking not found');
     }
@@ -122,7 +148,9 @@ export class ReviewsService {
   }
 
   private async requireReview(reviewId: number): Promise<ReviewRecord> {
-    const review = await this.database.orm.public.Review.where({ id: reviewId }).first();
+    const review = await this.database.orm.public.Review.where({
+      id: reviewId,
+    }).first();
     if (!review) {
       throw new NotFoundException('Review not found');
     }
@@ -144,5 +172,10 @@ export class ReviewsService {
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
 }

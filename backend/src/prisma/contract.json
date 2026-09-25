@@ -1245,6 +1245,13 @@
                   "kind": "scalar"
                 }
               },
+              "clientMessageId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "content": {
                 "nullable": false,
                 "type": {
@@ -1317,6 +1324,9 @@
               "fields": {
                 "bookingId": {
                   "column": "bookingId"
+                },
+                "clientMessageId": {
+                  "column": "clientMessageId"
                 },
                 "content": {
                   "column": "content"
@@ -3209,6 +3219,11 @@
                   "nativeType": "int4",
                   "nullable": false
                 },
+                "clientMessageId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "content": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -3309,7 +3324,14 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "senderId",
+                    "clientMessageId"
+                  ]
+                }
+              ]
             },
             "notifications": {
               "checks": [
@@ -4248,7 +4270,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "2fa885b47f2ba8e647d1503ae6ec5f250a63304c2653e6065cacb05683421e23"
+    "storageHash": "546ebb1d1bf0c8e7200ff5f2f8cd21836307622c72ca7539b92c766a7431bc5e"
   },
   "execution": {
     "executionHash": "2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8",

@@ -290,17 +290,19 @@ model Notification {
 }
 
 model Message {
-  id        Int       @id @default(autoincrement())
-  bookingId Int
-  senderId  Int
-  content   String
-  readAt    DateTime?
-  createdAt DateTime  @default(now())
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  senderId        Int
+  clientMessageId String?
+  content         String
+  readAt          DateTime?
+  createdAt       DateTime  @default(now())
 
   booking Booking @relation(fields: [bookingId], references: [id])
   sender  User    @relation(fields: [senderId], references: [id])
 
   @@index([bookingId, createdAt])
+  @@unique([senderId, clientMessageId])
   @@map("messages")
 }
 

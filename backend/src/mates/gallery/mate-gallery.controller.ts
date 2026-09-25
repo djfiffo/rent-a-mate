@@ -13,7 +13,10 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard.js';
-import { successResponse, type ApiResponse } from '../../shared/http/api-response.js';
+import {
+  successResponse,
+  type ApiResponse,
+} from '../../shared/http/api-response.js';
 import { CurrentUser } from '../../shared/http/decorators/current-user.decorator.js';
 import type { AuthUser } from '../../shared/types/auth-user.js';
 import { requireMateUserId } from '../internal/require-mate-user.js';
@@ -31,7 +34,8 @@ export class MateGalleryController {
   @UseInterceptors(
     FileInterceptor('photo', {
       limits: { fileSize: 5 * 1024 * 1024 },
-      fileFilter: (_request, file, callback) => callback(null, file.mimetype.startsWith('image/')),
+      fileFilter: (_request, file, callback) =>
+        callback(null, file.mimetype.startsWith('image/')),
     }),
   )
   async addPhoto(
@@ -39,7 +43,11 @@ export class MateGalleryController {
     @Body() input: UploadMatePhotoDto,
     @UploadedFile() file?: { buffer: Buffer; mimetype: string },
   ): Promise<ApiResponse<{ photo: MatePhotoRecord }>> {
-    const photo = await this.mateGalleryService.addPhoto(requireMateUserId(user), input, file);
+    const photo = await this.mateGalleryService.addPhoto(
+      requireMateUserId(user),
+      input,
+      file,
+    );
     return successResponse('Mate photo added', { photo });
   }
 

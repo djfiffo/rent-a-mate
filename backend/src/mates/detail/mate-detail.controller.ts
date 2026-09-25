@@ -8,6 +8,8 @@ export class MateDetailController {
 
   @Get(':mateId')
   async findOne(@Param('mateId', ParseIntPipe) mateId: number) {
-    return successResponse('OK', { mate: await this.detailService.findOne(mateId) });
+    return successResponse('OK', {
+      mate: await this.detailService.findOne(mateId),
+    });
   }
 }

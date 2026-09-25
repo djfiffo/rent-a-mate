@@ -1,4 +1,7 @@
-import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 
 type MateVisibilityDatabase = { orm: { public: any } };
 
@@ -17,7 +20,9 @@ export async function requirePublicMate(
     throw new NotFoundException('Mate not found');
   }
 
-  const owner = await database.orm.public.User.where({ id: mate.userId }).first();
+  const owner = await database.orm.public.User.where({
+    id: mate.userId,
+  }).first();
   if (!isPublicMateOwner(owner)) {
     throw new NotFoundException('Mate not found');
   }
@@ -35,7 +40,9 @@ export async function requireBookableMate(
     throw new UnprocessableEntityException('Mate profile is not active');
   }
 
-  const owner = await database.orm.public.User.where({ id: mate.userId }).first();
+  const owner = await database.orm.public.User.where({
+    id: mate.userId,
+  }).first();
   if (!isPublicMateOwner(owner)) throw new NotFoundException('Mate not found');
   return { mate, owner };
 }
