@@ -1,11 +1,11 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Socket } from 'socket.io';
 import { db } from '../prisma/db.js';
 import { AuthService } from '../auth/auth.service.js';
 import type { ChatSocketData } from './chat.types.js';
 
 /**
- * Authenticates a socket during `handleConnection`, mirroring
+ * Authenticates a socket in namespace middleware, mirroring
  * `JwtStrategy.validate()` (see auth/jwt.strategy.ts) rule-for-rule: the
  * same isBanned/isActive gate, after consuming a short-lived single-use
  * ticket. The browser receives that ticket from the same-origin BFF route;
@@ -17,8 +17,6 @@ import type { ChatSocketData } from './chat.types.js';
  */
 @Injectable()
 export class WsJwtGuard {
-  private readonly logger = new Logger(WsJwtGuard.name);
-
   constructor(private readonly authService: AuthService) {}
 
   /**
@@ -48,13 +46,6 @@ export class WsJwtGuard {
       id: principal.id,
       role: user.role as ChatSocketData['user']['role'],
     };
-  }
-
-  /** Disconnects `client` after emitting an `error` event with `message`. */
-  reject(client: Socket, message: string): void {
-    this.logger.warn(`Rejecting socket ${client.id}: ${message}`);
-    client.emit('error', { message });
-    client.disconnect(true);
   }
 
   private extractToken(client: Socket): string | undefined {

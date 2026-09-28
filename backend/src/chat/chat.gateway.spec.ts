@@ -27,7 +27,10 @@ function createSocket(data: Record<string, unknown> = {}) {
 }
 
 function createServer() {
-  return { to: vi.fn().mockReturnValue({ emit: vi.fn() }) };
+  return {
+    to: vi.fn().mockReturnValue({ emit: vi.fn() }),
+    use: vi.fn(),
+  };
 }
 
 describe('ChatGateway', () => {
@@ -55,11 +58,10 @@ describe('ChatGateway', () => {
     gateway.server = server as never;
   });
 
-  describe('handleConnection', () => {
-    it('attaches the authenticated user to client.data and does not reject', async () => {
+  describe('namespace authentication middleware', () => {
+    it('attaches the user before accepting the connection', async () => {
       const wsJwtGuard = {
         authenticate: vi.fn().mockResolvedValue(user),
-        reject: vi.fn(),
       };
       gateway = new ChatGateway(
         messagesService as never,
@@ -67,29 +69,46 @@ describe('ChatGateway', () => {
         new MessagesEvents(),
       );
       const client = createSocket();
+      const next = vi.fn();
 
-      await gateway.handleConnection(client as never);
+      gateway.afterInit(server as never);
+      const middleware = server.use.mock.calls[0][0] as (
+        client: ReturnType<typeof createSocket>,
+        next: (error?: Error) => void,
+      ) => Promise<void>;
+      await middleware(client, next);
 
+      expect(wsJwtGuard.authenticate).toHaveBeenCalledWith(client);
       expect(client.data['user']).toEqual(user);
-      expect(wsJwtGuard.reject).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalledWith();
     });
 
-    it('rejects the connection when authentication fails', async () => {
+    it('rejects the handshake when authentication fails', async () => {
       const wsJwtGuard = {
         authenticate: vi
           .fn()
           .mockRejectedValue(new Error('Missing socket ticket')),
-        reject: vi.fn(),
       };
-      gateway = new ChatGateway(messagesService as never, wsJwtGuard as never);
-      const client = createSocket();
-
-      await gateway.handleConnection(client as never);
-
-      expect(wsJwtGuard.reject).toHaveBeenCalledWith(
-        client,
-        'Missing socket ticket',
+      gateway = new ChatGateway(
+        messagesService as never,
+        wsJwtGuard as never,
+        new MessagesEvents(),
       );
+      const client = createSocket();
+      const next = vi.fn();
+
+      gateway.afterInit(server as never);
+      const middleware = server.use.mock.calls[0][0] as (
+        client: ReturnType<typeof createSocket>,
+        next: (error?: Error) => void,
+      ) => Promise<void>;
+      await middleware(client, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+      expect(next.mock.calls[0][0].message).toBe('Missing socket ticket');
+      expect(next.mock.calls[0][0].data).toEqual({
+        code: 'SOCKET_AUTH_REJECTED',
+      });
       expect(client.data['user']).toBeUndefined();
     });
   });

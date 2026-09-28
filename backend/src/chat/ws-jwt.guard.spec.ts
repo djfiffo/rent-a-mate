@@ -26,8 +26,6 @@ function createSocket(
   return {
     id: 'socket-1',
     handshake: { auth, query },
-    emit: vi.fn(),
-    disconnect: vi.fn(),
   };
 }
 
@@ -132,20 +130,5 @@ describe('WsJwtGuard', () => {
     await expect(guard.authenticate(client as never)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
-  });
-
-  describe('reject', () => {
-    it('emits an error event and disconnects the socket', () => {
-      const jwtService = { verifyAsync: vi.fn() };
-      const guard = new WsJwtGuard(jwtService as never);
-      const client = createSocket();
-
-      guard.reject(client as never, 'Missing socket ticket');
-
-      expect(client.emit).toHaveBeenCalledWith('error', {
-        message: 'Missing socket ticket',
-      });
-      expect(client.disconnect).toHaveBeenCalledWith(true);
-    });
   });
 });

@@ -58,4 +58,26 @@ describe('MinioMateStorageProvider', () => {
       'mates/42/photo.jpg',
     );
   });
+
+  it('routes private object URLs through the authenticated API origin', async () => {
+    const client = {
+      bucketExists: vi.fn(),
+      makeBucket: vi.fn(),
+      putObject: vi.fn().mockResolvedValue({ etag: 'etag' }),
+      removeObject: vi.fn(),
+    } as never;
+    const provider = new MinioMateStorageProvider(client, {
+      ...config,
+      publicUrl: '/api/v1/uploads',
+    });
+
+    const stored = await provider.store(42, {
+      buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+      mimetype: 'image/png',
+    });
+
+    expect(stored.url).toMatch(
+      /^\/api\/v1\/uploads\?key=mates%2F42%2F.+\.png$/,
+    );
+  });
 });
