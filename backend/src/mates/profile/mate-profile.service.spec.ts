@@ -7,7 +7,7 @@ const mate = {
   userId: 7,
   age: 25,
   bio: 'Friendly',
-  hourlyRate: 350,
+  hourlyRate: '350.00',
   provinceId: 1,
   districtId: 2,
   isActive: true,
@@ -105,5 +105,15 @@ describe('MateProfileService', () => {
     expect(result.user).toEqual({ id: 7, name: 'Nan' });
     expect(result.user).not.toHaveProperty('email');
     expect(result.user).not.toHaveProperty('password');
+  });
+
+  it('normalizes a database numeric hourly rate for the API contract', async () => {
+    const { db } = database();
+    const service = new MateProfileService(db);
+
+    const result = await service.getProfile(7);
+
+    expect(result.hourlyRate).toBe(350);
+    expect(typeof result.hourlyRate).toBe('number');
   });
 });

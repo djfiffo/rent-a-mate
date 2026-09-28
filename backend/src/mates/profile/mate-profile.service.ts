@@ -210,7 +210,7 @@ export class MateProfileService {
       user: { id: safeUser.id, name: safeUser.name },
       age: mate.age,
       bio: mate.bio,
-      hourlyRate: mate.hourlyRate,
+      hourlyRate: Number(mate.hourlyRate),
       isActive: mate.isActive !== false,
       deactivatedAt: mate.deactiveAt ?? null,
       province: this.toLookup(
