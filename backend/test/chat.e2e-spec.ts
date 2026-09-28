@@ -4,8 +4,17 @@ import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { io, type Socket } from 'socket.io-client';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { db } from '../src/prisma/db.js';
+import { WsJwtGuard } from '../src/chat/ws-jwt.guard.js';
 import { createE2eApp } from './fixtures/e2e-app.js';
 import {
   cleanupTestDatabase,
@@ -52,6 +61,27 @@ describe('Socket.IO booking chat (e2e)', () => {
     expect(
       await emitAck(socket, 'join_booking', { bookingId: booking.id }),
     ).toEqual({ ok: true });
+  });
+
+  it('waits for slow authentication before accepting an immediate join_booking', async () => {
+    const booking = await directBooking(data, 'confirmed');
+    const guard = app.get(WsJwtGuard);
+    const authenticate = guard.authenticate.bind(guard);
+    const delayedAuth = vi
+      .spyOn(guard, 'authenticate')
+      .mockImplementation(async (client) => {
+        await delay(80);
+        return authenticate(client);
+      });
+
+    try {
+      const socket = await connectValid(app, tokens.renter1.accessToken);
+      expect(
+        await emitAck(socket, 'join_booking', { bookingId: booking.id }),
+      ).toEqual({ ok: true });
+    } finally {
+      delayedAuth.mockRestore();
+    }
   });
 
   it('WS-02/03 rejects query-only tickets and never uses query as fallback', async () => {
@@ -401,7 +431,6 @@ async function expectSocketConnected(socket: Socket): Promise<void> {
       reject(error);
     });
   });
-  await delay(20);
 }
 
 async function expectSocketRejected(socket: Socket, expected: string | RegExp) {

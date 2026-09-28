@@ -9,13 +9,13 @@ import {
 import {
   ConnectedSocket,
   MessageBody,
-  OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import type { Server, Socket } from 'socket.io';
+import type { Namespace, Socket } from 'socket.io';
 import type { Subscription } from 'rxjs';
 import { MessagesEvents } from '../messages/messages.events.js';
 import { MessagesService } from '../messages/messages.service.js';
@@ -45,8 +45,8 @@ const VALIDATION_PIPE = new ValidationPipe({
  * REST only. This gateway observes committed writes and broadcasts them, and
  * handles transient room, typing, and read-receipt events.
  *
- * Auth happens once per connection in `handleConnection` via `WsJwtGuard`,
- * not per message; each handler still fetches `client.data.user` (set there)
+ * Auth happens once in namespace middleware, before a client can emit
+ * `join_booking`. Handlers fetch the authenticated `client.data.user`
  * rather than trusting the payload for identity.
  */
 @WebSocketGateway({
@@ -61,23 +61,37 @@ const VALIDATION_PIPE = new ValidationPipe({
   },
 })
 export class ChatGateway
-  implements
-    OnGatewayConnection,
-    OnGatewayDisconnect,
-    OnModuleInit,
-    OnModuleDestroy
+  implements OnGatewayInit, OnGatewayDisconnect, OnModuleInit, OnModuleDestroy
 {
   private readonly logger = new Logger(ChatGateway.name);
   private messageCreatedSubscription?: Subscription;
 
   @WebSocketServer()
-  server!: Server;
+  server!: Namespace;
 
   constructor(
     private readonly messagesService: MessagesService,
     private readonly wsJwtGuard: WsJwtGuard,
     private readonly messagesEvents: MessagesEvents,
   ) {}
+
+  afterInit(server: Namespace): void {
+    server.use(async (client, next) => {
+      try {
+        (client.data as ChatSocketData).user =
+          await this.wsJwtGuard.authenticate(client);
+        next();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unauthorized';
+        this.logger.warn(`Rejecting socket ${client.id}: ${message}`);
+        next(
+          Object.assign(new Error(message), {
+            data: { code: 'SOCKET_AUTH_REJECTED' },
+          }),
+        );
+      }
+    });
+  }
 
   onModuleInit(): void {
     this.messageCreatedSubscription = this.messagesEvents.created$.subscribe(
@@ -91,18 +105,6 @@ export class ChatGateway
 
   onModuleDestroy(): void {
     this.messageCreatedSubscription?.unsubscribe();
-  }
-
-  async handleConnection(client: Socket): Promise<void> {
-    try {
-      const user = await this.wsJwtGuard.authenticate(client);
-      (client.data as ChatSocketData).user = user;
-    } catch (error) {
-      this.wsJwtGuard.reject(
-        client,
-        error instanceof Error ? error.message : 'Unauthorized',
-      );
-    }
   }
 
   handleDisconnect(client: Socket): void {
