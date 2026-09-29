@@ -1,114 +1,175 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# mateflow — Backend Setup
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+The NestJS API powering mateflow: a platform for discovering Mates, booking shared activities, chatting, and paying with PromptPay.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+See the [project overview](../README.md) for features and repository structure.
 
-## Description
+## Prerequisites
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Node.js **24** and npm.
+- Docker with Docker Compose.
+- Stripe test credentials only when testing Stripe integration instead of mock payments.
 
-## Project setup
+## Installation
+
+### 1. Start local services
+
+From the repository root:
 
 ```bash
-$ npm install
+docker compose up -d
 ```
 
-## Compile and run the project
+This starts PostgreSQL 17 on port `5432` and RustFS S3-compatible object storage on ports `9000` and `9001`.
+
+### 2. Install dependencies
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cd backend
+npm ci
+cp .env.example .env
 ```
 
-## Run tests
+### 3. Configure the environment
+
+Edit `backend/.env`. Set these local values and replace each secret placeholder with a separate, securely generated value:
+
+```dotenv
+DATABASE_URL=postgresql://saig:1234@localhost:5432/rent_a_mate
+JWT_ACCESS_SECRET=replace-with-a-random-access-secret
+JWT_REFRESH_SECRET=replace-with-a-random-refresh-secret
+JWT_SOCKET_TICKET_SECRET=replace-with-a-random-ticket-secret
+SOCKET_TICKET_TTL_SECONDS=60
+CORS_ORIGIN=http://localhost:3001
+PORT=3000
+API_PREFIX=api/v1
+PAYMENTS_MODE=mock
+```
+
+The database credentials match local Compose and are **for development only**. Add `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` explicitly; the example file does not currently include them.
+
+Keep the local `MINIO_*` settings from `.env.example` when using the provided storage service. These environment names also apply to RustFS.
+
+| Variables                                               | Purpose                                   |
+| ------------------------------------------------------- | ----------------------------------------- |
+| `DATABASE_URL`                                          | PostgreSQL connection                     |
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`               | Access and refresh token signing          |
+| `JWT_SOCKET_TICKET_SECRET`, `SOCKET_TICKET_TTL_SECONDS` | Socket authentication                     |
+| `CORS_ORIGIN`                                           | Allowed frontend origins, comma-separated |
+| `MINIO_ENDPOINT`, `MINIO_PORT`, `MINIO_USE_SSL`         | Storage connection                        |
+| `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`  | Storage credentials and bucket            |
+| `MINIO_PUBLIC_URL`                                      | Public image base URL                     |
+| `PAYMENTS_MODE`                                         | Local `mock` or `stripe` mode             |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`            | Stripe API and webhook credentials        |
+| `STRIPE_API_VERSION`                                    | Configured Stripe API version             |
+
+Never commit real secrets or share your `.env`.
+
+### 4. Prepare the database
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run db:update
+npm run seed
 ```
 
-## Deployment
+This project uses a Prisma ORM database contract. Use the repository scripts rather than assuming conventional Prisma migration commands apply.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Optional demo account seeding requires `DEMO_ACCOUNT_PASSWORD`. Use a development-only password.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 5. Start the API
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Default API: **http://localhost:3000/api/v1**
 
-## Observability
+Run the [frontend](https://github.com/IkrtI/rent-a-mate-frontend) on **http://localhost:3001**, configured with `BACKEND_URL=http://localhost:3000/api/v1` and `NEXT_PUBLIC_SOCKET_URL=http://localhost:3000`.
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+## Application Flow
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+Renters discover Mates and request bookings. The backend enforces booking permissions and transitions between `pending`, `confirmed`, `completed`, and `cancelled`. Renters can review their own completed bookings.
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+REST loads and saves messages. Socket.IO broadcasts messages, typing activity, and read receipts through the `/chat` namespace. Clients use short-lived, single-use tickets and request a new ticket on reconnect. Messages are not saved through both transports.
 
-## Resources
+For payments, the backend returns `bookingId`, `status`, and `clientSecret`. The frontend uses Stripe.js to present PromptPay QR. Stripe webhooks and backend status reconciliation confirm the payment result.
 
-Check out a few resources that may come in handy when working with NestJS:
+### Trying payments locally
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Use backend `PAYMENTS_MODE=mock` with frontend `NEXT_PUBLIC_PAYMENTS_MODE=mock` for mock payments. Mock mode is unavailable in production.
 
-## Support
+To test Stripe:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+1. Switch both applications to `stripe` mode.
+2. Configure matching Stripe test secret and publishable keys.
+3. Configure webhook delivery to `POST /api/v1/webhooks/stripe` and set its signing secret.
+4. Confirm PromptPay is available for your Stripe account.
 
-## Stay in touch
+Showing a QR code is not proof of payment. The frontend waits for backend confirmation.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Project Structure
 
-## License
+```text
+src/
+  auth/       Authentication
+  mates/      Mate profiles and related functionality
+  bookings/   Booking lifecycle
+  payments/   Payments, refunds, and status handling
+  messages/   Message API
+  prisma/     Database contract and integration
+prisma/       Seed script
+test/         E2E tests and fixtures
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## Development Commands
+
+Run from `backend/`:
+
+| Command                | Description                                   |
+| ---------------------- | --------------------------------------------- |
+| `npm run start:dev`    | Start in watch mode                           |
+| `npm run build`        | Compile application                           |
+| `npm run start:prod`   | Run compiled application                      |
+| `npm run format:check` | Check formatting                              |
+| `npm run lint`         | Run Oxlint                                    |
+| `npm test`             | Run unit tests                                |
+| `npm run test:cov`     | Run tests with coverage                       |
+| `npm run test:e2e`     | Run database-backed E2E tests                 |
+| `npm run verify`       | Check formatting, lint, unit tests, and build |
+| `npm run db:update`    | Apply database contract                       |
+| `npm run seed`         | Seed initial data                             |
+
+## E2E Tests
+
+**Use a dedicated test database. Tests reset fixture data. Never use production or a database containing data you need.**
+
+Create the database once from the repository root:
+
+```bash
+docker compose exec postgres createdb -U saig rent_a_mate_test
+```
+
+Run from `backend/`:
+
+```bash
+(
+  export DATABASE_URL='postgresql://saig:1234@localhost:5432/rent_a_mate_test'
+  export TEST_DATABASE_URL="$DATABASE_URL"
+  npm run db:update && npm run seed && npm run test:e2e
+)
+```
+
+The subshell keeps test environment variables out of your normal development session. E2E tests use a real test database but do not verify live Stripe payments.
+
+## CI and Production
+
+[GitHub Actions](../.github/workflows/backend-ci.yml) runs two independent jobs on pushes and pull requests:
+
+- **Verify:** dependency installation, formatting, lint, unit tests, and build.
+- **E2E:** PostgreSQL 17 service, database preparation, seed, and E2E tests.
+
+CI uses Node.js 24 and does not deploy.
+
+See [the production environment template](../.env.production.example), [production Compose](../docker-compose.prod.yml), and [Dockerfile](Dockerfile). Use HTTPS, restricted CORS, dedicated database/storage credentials, strong signing secrets, and Stripe mode with correctly configured webhooks. Frontend and backend Stripe credentials must belong to the same account and mode. The proxy must support WebSocket connections.
+
+Example environment files are not loaded automatically. Review database changes as part of your release process; building does not update the database.
