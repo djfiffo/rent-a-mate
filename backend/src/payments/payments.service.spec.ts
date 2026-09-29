@@ -163,7 +163,11 @@ describe('PaymentsService', () => {
       expect(
         fixture.stripeProvider.client.paymentIntents.create,
       ).toHaveBeenCalledWith(
-        expect.objectContaining({ amount: 40000, currency: 'thb' }),
+        expect.objectContaining({
+          amount: 40000,
+          currency: 'thb',
+          payment_method_types: ['card', 'promptpay'],
+        }),
         { idempotencyKey: 'booking-1-payment' },
       );
       expect(fixture.paymentRows).toEqual([

@@ -160,6 +160,7 @@ export class PaymentsService {
         {
           amount: amountInSmallestUnit,
           currency: 'thb',
+          payment_method_types: ['card', 'promptpay'],
           metadata: { bookingId: String(bookingId) },
         },
         { idempotencyKey: `booking-${bookingId}-payment` },

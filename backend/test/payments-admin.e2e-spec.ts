@@ -79,6 +79,7 @@ describe('Payments, webhooks, reports, and admin APIs (e2e)', () => {
         params: {
           amount: 75025,
           currency: 'thb',
+          payment_method_types: ['card', 'promptpay'],
           metadata: { bookingId: String(booking.id) },
         },
         options: { idempotencyKey: `booking-${booking.id}-payment` },
