@@ -1,0 +1,344 @@
+// use prisma-next
+
+enum UserRole {
+  admin
+  mate
+  renter
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+enum NotificationType {
+  booking_requested
+  booking_confirmed
+  booking_declined
+  booking_cancelled
+  booking_completed
+  payment_paid
+  payment_failed
+  payment_refunded
+  message_received
+  report_resolved
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunding
+  refunded
+}
+
+enum ReportTargetType {
+  user
+  mate
+  booking
+  review
+  message
+}
+
+enum ReportStatus {
+  open
+  reviewed
+  dismissed
+  actioned
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  isActive      Boolean   @default(true)
+  deactivatedAt DateTime?
+  isBanned      Boolean   @default(false)
+  bannedAt      DateTime?
+  banReason     String?
+  isVerified    Boolean   @default(false)
+  verifiedAt    DateTime?
+
+  mate     Mate?
+  bookings Booking[]
+  reviews  Review[]
+
+  reportsFiled    Report[] @relation("ReportReporter")
+  reportsResolved Report[] @relation("ReportResolver")
+
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+  sentMessages  Message[]
+
+  @@index([role, createdAt])
+  @@index([isActive, isBanned])
+}
+
+model Mate {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @unique
+  age        Int?
+  bio        String?
+  provinceId Int
+  districtId Int
+  hourlyRate Decimal
+  profileImageUrl String?
+  profileImageKey String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now())
+
+  isActive Boolean @default(true)
+  deactiveAt DateTime?
+
+  availability MateAvailability[]
+
+  user       User            @relation(fields: [userId], references: [id])
+  province   Province        @relation(fields: [provinceId], references: [id])
+  district   District        @relation(fields: [districtId], references: [id])
+  activities MateActivity[]
+  interests  MateInterest[]
+  photos     MatePhoto[]
+  bookings   Booking[]
+  reviews    Review[]
+
+  @@index([provinceId])
+  @@index([districtId])
+  @@index([hourlyRate])
+  @@index([isActive, provinceId])
+}
+
+model MateAvailability {
+  id        Int      @id @default(autoincrement())
+  mateId    Int
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  mate Mate @relation(fields: [mateId], references: [id], onDelete: Cascade)
+
+  @@unique([mateId, dayOfWeek, startTime, endTime])
+}
+
+model MatePhoto {
+  id         Int      @id @default(autoincrement())
+  mateId     Int
+  url        String
+  storageKey String?
+  sortOrder  Int
+  createdAt  DateTime @default(now())
+
+  mate Mate @relation(fields: [mateId], references: [id], onDelete: Cascade)
+
+  @@unique([mateId, sortOrder])
+  @@map("mate_photos")
+}
+
+model Province {
+  id        Int        @id
+  name      String     @unique
+
+  districts District[]
+  mates     Mate[]
+
+  @@map("provinces")
+}
+
+model District {
+  id         Int      @id
+  provinceId Int
+  name       String
+
+  province Province @relation(
+    fields: [provinceId],
+    references: [id]
+  )
+
+  mates Mate[]
+
+  @@unique([provinceId, name])
+
+  @@map("districts")
+}
+
+model Activity {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  mates    MateActivity[]
+  bookings Booking[]
+}
+
+model Interest {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  mates MateInterest[]
+}
+
+model MateActivity {
+  mateId     Int
+  activityId Int
+
+  mate     Mate     @relation(fields: [mateId], references: [id])
+  activity Activity @relation(fields: [activityId], references: [id])
+
+  @@id([mateId, activityId])
+}
+
+model MateInterest {
+  mateId     Int
+  interestId Int
+
+  mate     Mate     @relation(fields: [mateId], references: [id])
+  interest Interest @relation(fields: [interestId], references: [id])
+
+  @@id([mateId, interestId])
+}
+
+model Booking {
+  id         Int           @id @default(autoincrement())
+  renterId   Int
+  mateId     Int
+  activityId Int
+  date       DateTime
+  startTime  DateTime
+  endTime    DateTime
+  totalPrice Decimal
+  status     BookingStatus
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @default(now())
+
+  renter        User           @relation(fields: [renterId], references: [id])
+  mate          Mate           @relation(fields: [mateId], references: [id])
+  activity      Activity       @relation(fields: [activityId], references: [id])
+  payment       Payment?
+  review        Review?
+  notifications Notification[]
+  messages      Message[]
+
+  @@index([mateId, date, status])
+  @@index([renterId, createdAt])
+  @@index([status, date])
+}
+
+model Payment {
+  id                Int           @id @default(autoincrement())
+  bookingId         Int           @unique
+  amount            Decimal
+  status            PaymentStatus
+  // Stripe PaymentIntent id, e.g. "pi_xxx". Nullable/unset until the
+  // PaymentIntent is actually created with Stripe (status=pending).
+  providerReference String?       @unique
+  paidAt            DateTime?
+  failedAt          DateTime?
+  refundedAt        DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([status, createdAt])
+}
+
+// Dedupe table for Stripe webhook deliveries — Stripe guarantees at-least-once
+// delivery, so every event.id is recorded here before being processed to make
+// webhook handling idempotent.
+model StripeWebhookEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  bookingId Int      @unique
+  renterId  Int
+  mateId    Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  renter  User    @relation(fields: [renterId], references: [id])
+  mate    Mate    @relation(fields: [mateId], references: [id])
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  type      NotificationType
+  message   String
+  bookingId Int?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user    User     @relation(fields: [userId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
+model Message {
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  senderId        Int
+  clientMessageId String?
+  content         String
+  readAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  sender  User    @relation(fields: [senderId], references: [id])
+
+  @@index([bookingId, createdAt])
+  @@unique([senderId, clientMessageId])
+  @@map("messages")
+}
+
+model RefreshToken {
+  id            String    @id @default(uuid())
+  userId        Int
+  tokenHash     String
+  jti           String    @unique
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  replacedByJti String?
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, expiresAt])
+  @@map("refresh_tokens")
+}
+
+model Report {
+  id             Int             @id @default(autoincrement())
+  reporterId     Int
+  targetType     ReportTargetType
+  targetId       Int
+  reason         String
+  status         ReportStatus    @default(open)
+  resolutionNote String?
+  resolvedById   Int?
+  resolvedAt     DateTime?
+  createdAt      DateTime        @default(now())
+
+  reporter   User  @relation("ReportReporter", fields: [reporterId], references: [id])
+  resolvedBy User? @relation("ReportResolver", fields: [resolvedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@index([reporterId, createdAt])
+  @@map("reports")
+}

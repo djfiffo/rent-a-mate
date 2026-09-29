@@ -1,0 +1,1 @@
+export const PASSWORD_SERVICE = Symbol('PASSWORD_SERVICE');

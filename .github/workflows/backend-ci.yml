@@ -1,0 +1,60 @@
+name: Backend quality gate
+
+on:
+  push:
+  pull_request:
+
+defaults:
+  run:
+    working-directory: backend
+
+env:
+  NODE_ENV: test
+  JWT_ACCESS_SECRET: test-access-secret-not-for-production
+  JWT_REFRESH_SECRET: test-refresh-secret-not-for-production
+  JWT_SOCKET_TICKET_SECRET: test-socket-ticket-secret-not-for-production
+  SOCKET_TICKET_TTL_SECONDS: 60
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run verify
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: rent_a_mate_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_user -d rent_a_mate_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://test_user:test_password@localhost:5432/rent_a_mate_test
+      TEST_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/rent_a_mate_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run db:update
+      - run: npm run seed
+      - run: npm run test:e2e
