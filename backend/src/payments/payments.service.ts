@@ -126,6 +126,20 @@ export class PaymentsService {
       const intent = await this.stripeProvider.client.paymentIntents.retrieve(
         existing.providerReference,
       );
+      if (
+        intent.status === 'requires_payment_method' &&
+        !intent.payment_method_types.includes('promptpay')
+      ) {
+        const updated = await this.stripeProvider.client.paymentIntents.update(
+          intent.id,
+          { payment_method_types: ['promptpay'] },
+        );
+        return {
+          bookingId,
+          status: existing.status,
+          clientSecret: updated.client_secret,
+        };
+      }
       return {
         bookingId,
         status: existing.status,
@@ -160,7 +174,7 @@ export class PaymentsService {
         {
           amount: amountInSmallestUnit,
           currency: 'thb',
-          payment_method_types: ['card', 'promptpay'],
+          payment_method_types: ['promptpay'],
           metadata: { bookingId: String(bookingId) },
         },
         { idempotencyKey: `booking-${bookingId}-payment` },
@@ -225,9 +239,31 @@ export class PaymentsService {
    */
   async getStatus(user: AuthUser, bookingId: number): Promise<PaymentDetail> {
     const { booking } = await this.assertParticipant(user, bookingId);
-    const payment = await this.database.orm.public.Payment.where({
+    let payment = await this.database.orm.public.Payment.where({
       bookingId,
     }).first();
+    if (
+      payment?.status === 'pending' &&
+      payment.providerReference &&
+      !payment.providerReference.startsWith('local_mock_')
+    ) {
+      let stripeStatus: string | undefined;
+      try {
+        const intent = await this.stripeProvider.client.paymentIntents.retrieve(
+          payment.providerReference,
+        );
+        stripeStatus = intent.status;
+      } catch {
+        // A temporary Stripe outage must not prevent clients from reading
+        // their last known payment status. Webhooks still handle asynchronous changes.
+      }
+      if (stripeStatus === 'succeeded') {
+        await this.markPaid(payment.providerReference);
+        payment = await this.database.orm.public.Payment.where({
+          bookingId,
+        }).first();
+      }
+    }
     return this.toDetail(booking, payment);
   }
 
@@ -367,8 +403,8 @@ export class PaymentsService {
   }
 
   /**
-   * Finalizes a payment as `paid` from the `payment_intent.succeeded`
-   * webhook. Idempotent: a payment that is already `paid` is left alone
+   * Finalizes a payment as `paid` from a succeeded Stripe intent, either via
+   * webhook or status reconciliation. An already-paid payment is left alone
    * and no duplicate notification is sent.
    */
   async markPaid(providerReference: string): Promise<void> {
@@ -376,7 +412,12 @@ export class PaymentsService {
       const payment = await tx.orm.public.Payment.where({
         providerReference,
       }).first();
-      if (!payment || payment.status === 'paid') {
+      if (
+        !payment ||
+        payment.status === 'paid' ||
+        payment.status === 'refunding' ||
+        payment.status === 'refunded'
+      ) {
         return;
       }
 

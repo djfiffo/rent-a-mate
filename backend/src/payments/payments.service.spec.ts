@@ -116,6 +116,9 @@ function createFixture() {
         retrieve: vi
           .fn()
           .mockResolvedValue({ id: 'pi_123', client_secret: 'secret_123' }),
+        update: vi
+          .fn()
+          .mockResolvedValue({ id: 'pi_123', client_secret: 'secret_123' }),
       },
       refunds: {
         create: vi.fn().mockResolvedValue({ id: 're_123' }),
@@ -166,7 +169,7 @@ describe('PaymentsService', () => {
         expect.objectContaining({
           amount: 40000,
           currency: 'thb',
-          payment_method_types: ['card', 'promptpay'],
+          payment_method_types: ['promptpay'],
         }),
         { idempotencyKey: 'booking-1-payment' },
       );
@@ -246,6 +249,34 @@ describe('PaymentsService', () => {
         fixture.stripeProvider.client.paymentIntents.create,
       ).not.toHaveBeenCalled();
     });
+
+    it('converts an unconfirmed card intent to PromptPay when resumed', async () => {
+      fixture.paymentRows.push({
+        bookingId: 1,
+        status: 'pending',
+        providerReference: 'pi_123',
+      });
+      fixture.stripeProvider.client.paymentIntents.retrieve.mockResolvedValueOnce(
+        {
+          id: 'pi_123',
+          status: 'requires_payment_method',
+          payment_method_types: ['card'],
+          client_secret: 'secret_123',
+        },
+      );
+
+      const result = await fixture.service.pay(renter, 1);
+
+      expect(
+        fixture.stripeProvider.client.paymentIntents.update,
+      ).toHaveBeenCalledWith('pi_123', {
+        payment_method_types: ['promptpay'],
+      });
+      expect(result.clientSecret).toBe('secret_123');
+      expect(
+        fixture.stripeProvider.client.paymentIntents.create,
+      ).not.toHaveBeenCalled();
+    });
   });
 
   describe('getStatus', () => {
@@ -258,6 +289,26 @@ describe('PaymentsService', () => {
           providerReference: null,
         }),
       );
+    });
+
+    it('reconciles a completed Stripe payment when its webhook has not arrived', async () => {
+      fixture.paymentRows.push({
+        bookingId: 1,
+        status: 'pending',
+        providerReference: 'pi_123',
+      });
+      fixture.stripeProvider.client.paymentIntents.retrieve.mockResolvedValueOnce(
+        {
+          id: 'pi_123',
+          status: 'succeeded',
+        },
+      );
+
+      const result = await fixture.service.getStatus(renter, 1);
+
+      expect(result.status).toBe('paid');
+      expect(fixture.paymentRows[0]?.status).toBe('paid');
+      expect(fixture.notificationRows).toHaveLength(1);
     });
 
     it('is hidden from a non-participant', async () => {
@@ -311,6 +362,19 @@ describe('PaymentsService', () => {
   });
 
   describe('webhook finalization', () => {
+    it('does not regress a refunded payment when success is reconciled late', async () => {
+      fixture.paymentRows.push({
+        bookingId: 1,
+        status: 'refunded',
+        providerReference: 'pi_123',
+      });
+
+      await fixture.service.markPaid('pi_123');
+
+      expect(fixture.paymentRows[0]?.status).toBe('refunded');
+      expect(fixture.notificationRows).toHaveLength(0);
+    });
+
     it('markPaid transitions pending -> paid and notifies the renter', async () => {
       fixture.paymentRows.push({
         bookingId: 1,
