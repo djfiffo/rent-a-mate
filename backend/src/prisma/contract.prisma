@@ -98,6 +98,7 @@ model Mate {
   deactiveAt DateTime?
 
   availability MateAvailability[]
+  availabilityOverrides MateAvailabilityDateOverride[]
 
   user       User            @relation(fields: [userId], references: [id])
   province   Province        @relation(fields: [provinceId], references: [id])
@@ -126,6 +127,35 @@ model MateAvailability {
   mate Mate @relation(fields: [mateId], references: [id], onDelete: Cascade)
 
   @@unique([mateId, dayOfWeek, startTime, endTime])
+}
+
+model MateAvailabilityDateOverride {
+  id        Int      @id @default(autoincrement())
+  mateId    Int
+  date      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  mate  Mate                              @relation(fields: [mateId], references: [id], onDelete: Cascade)
+  slots MateAvailabilityDateOverrideSlot[]
+
+  @@unique([mateId, date], map: "mate_avail_overrides_date_unique")
+  @@map("mate_availability_date_overrides")
+}
+
+model MateAvailabilityDateOverrideSlot {
+  id         Int      @id @default(autoincrement())
+  overrideId Int
+  startTime  String
+  endTime    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now())
+
+  override MateAvailabilityDateOverride @relation(fields: [overrideId], references: [id], onDelete: Cascade)
+
+  @@index([overrideId], map: "mate_avail_override_slots_override_idx")
+  @@unique([overrideId, startTime, endTime], map: "mate_avail_date_slots_unique")
+  @@map("mate_availability_date_override_slots")
 }
 
 model MatePhoto {

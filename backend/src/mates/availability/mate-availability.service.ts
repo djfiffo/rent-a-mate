@@ -10,10 +10,12 @@ import { Temporal } from '@js-temporal/polyfill';
 import { CreateMateAvailabilityDto } from './dto/create-mate-availability.dto.js';
 import { UpdateMateAvailabilityDto } from './dto/update-mate-availability.dto.js';
 import { ReplaceMateAvailabilityDto } from './dto/replace-mate-availability.dto.js';
+import { ReplaceMateAvailabilityDateDto } from './dto/replace-mate-availability-date.dto.js';
 import { MATES_DATABASE_TOKEN } from '../internal/mates.tokens.js';
 import { requirePublicMate } from '../internal/mate-visibility.js';
 import type {
   MateAvailabilityRecord,
+  MateAvailabilityDateOverrideSlotRecord,
   MateDatabase,
   MateQueryRecord,
 } from '../internal/mates.types.js';
@@ -23,6 +25,11 @@ const TIMEZONE = 'Asia/Bangkok';
 export interface MateOpenInterval {
   startTime: string;
   endTime: string;
+}
+
+export interface MateAvailabilityOverride {
+  date: string;
+  slots: { startTime: string; endTime: string }[];
 }
 
 @Injectable()
@@ -69,6 +76,93 @@ export class MateAvailabilityService {
 
       return this.timeToMinutes(a.startTime) - this.timeToMinutes(b.startTime);
     });
+  }
+
+  async findDateOverrides(userId: number): Promise<MateAvailabilityOverride[]> {
+    const mate = await this.requireMate(userId);
+    const today = Temporal.Now.zonedDateTimeISO(TIMEZONE)
+      .toPlainDate()
+      .toString();
+    const overrides =
+      await this.database.orm.public.MateAvailabilityDateOverride.where({
+        mateId: mate.id,
+      }).all();
+
+    return Promise.all(
+      overrides
+        .filter((override) => override.date >= today)
+        .sort((left, right) => left.date.localeCompare(right.date))
+        .map(async (override) => ({
+          date: override.date,
+          slots: await this.findOverrideSlots(override.id),
+        })),
+    );
+  }
+
+  async replaceDateOverride(
+    userId: number,
+    dateValue: string,
+    input: ReplaceMateAvailabilityDateDto,
+  ): Promise<MateAvailabilityOverride> {
+    const date = this.parseDate(dateValue).toString();
+    this.validateDateSchedule(input.slots);
+
+    await this.database.transaction(async (transaction) => {
+      const mate = await this.requireActiveMate(userId, transaction);
+      let override =
+        await transaction.orm.public.MateAvailabilityDateOverride.where({
+          mateId: mate.id,
+          date,
+        }).first();
+
+      if (!override) {
+        override =
+          await transaction.orm.public.MateAvailabilityDateOverride.create({
+            mateId: mate.id,
+            date,
+          });
+      }
+
+      await transaction.orm.public.MateAvailabilityDateOverrideSlot.where({
+        overrideId: override.id,
+      }).deleteAndCount();
+
+      for (const slot of input.slots) {
+        await transaction.orm.public.MateAvailabilityDateOverrideSlot.create({
+          overrideId: override.id,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        });
+      }
+    });
+
+    const mate = await this.requireMate(userId);
+    const override =
+      await this.database.orm.public.MateAvailabilityDateOverride.where({
+        mateId: mate.id,
+        date,
+      }).first();
+    if (!override)
+      throw new NotFoundException('Availability override not found');
+
+    return { date, slots: await this.findOverrideSlots(override.id) };
+  }
+
+  async removeDateOverride(userId: number, dateValue: string): Promise<void> {
+    const date = this.parseDate(dateValue).toString();
+    const mate = await this.requireActiveMate(userId);
+    const override =
+      await this.database.orm.public.MateAvailabilityDateOverride.where({
+        mateId: mate.id,
+        date,
+      }).first();
+    if (!override)
+      throw new NotFoundException('Availability override not found');
+
+    await this.database.orm.public.MateAvailabilityDateOverride.where({
+      id: override.id,
+      mateId: mate.id,
+    }).delete();
   }
 
   async update(
@@ -153,11 +247,19 @@ export class MateAvailabilityService {
     this.validateTimeRange(startTime, endTime);
 
     const dayOfWeek = date.dayOfWeek;
-
-    const availability = await this.database.orm.public.MateAvailability.where({
-      mateId,
-      dayOfWeek,
-    }).all();
+    const override =
+      await this.database.orm.public.MateAvailabilityDateOverride.where({
+        mateId,
+        date: date.toString(),
+      }).first();
+    const availability = override
+      ? await this.database.orm.public.MateAvailabilityDateOverrideSlot.where({
+          overrideId: override.id,
+        }).all()
+      : await this.database.orm.public.MateAvailability.where({
+          mateId,
+          dayOfWeek,
+        }).all();
 
     const requestedStart = this.timeToMinutes(startTime);
     const requestedEnd = this.timeToMinutes(endTime);
@@ -220,11 +322,11 @@ export class MateAvailabilityService {
     const date = this.parseDate(dateValue);
     await requirePublicMate(this.database, mateId);
 
-    const [weekly, bookings] = await Promise.all([
-      this.database.orm.public.MateAvailability.where({
+    const [override, bookings] = await Promise.all([
+      this.database.orm.public.MateAvailabilityDateOverride.where({
         mateId,
-        dayOfWeek: date.dayOfWeek,
-      }).all(),
+        date: date.toString(),
+      }).first(),
       this.database.orm.public.Booking.where({
         mateId,
         date: date
@@ -232,6 +334,14 @@ export class MateAvailabilityService {
           .toInstant(),
       }).all(),
     ]);
+    const weekly = override
+      ? await this.database.orm.public.MateAvailabilityDateOverrideSlot.where({
+          overrideId: override.id,
+        }).all()
+      : await this.database.orm.public.MateAvailability.where({
+          mateId,
+          dayOfWeek: date.dayOfWeek,
+        }).all();
 
     const blocking = bookings
       .filter(
@@ -343,6 +453,46 @@ export class MateAvailabilityService {
     }
   }
 
+  private validateDateSchedule(
+    windows: ReplaceMateAvailabilityDateDto['slots'],
+  ): void {
+    if (windows.length > 70) {
+      throw new BadRequestException(
+        'At most 70 availability windows are allowed',
+      );
+    }
+
+    const sorted = [...windows].sort((left, right) =>
+      left.startTime.localeCompare(right.startTime),
+    );
+    for (let index = 0; index < sorted.length; index += 1) {
+      const current = sorted[index];
+      this.validateTimeRange(current.startTime, current.endTime);
+      const next = sorted[index + 1];
+      if (next && next.startTime < current.endTime) {
+        throw new ConflictException(
+          'Availability overlaps with an existing time range',
+        );
+      }
+    }
+  }
+
+  private async findOverrideSlots(
+    overrideId: number,
+  ): Promise<{ startTime: string; endTime: string }[]> {
+    const slots =
+      await this.database.orm.public.MateAvailabilityDateOverrideSlot.where({
+        overrideId,
+      }).all();
+    return slots
+      .sort(
+        (left, right) =>
+          this.timeToMinutes(left.startTime) -
+          this.timeToMinutes(right.startTime),
+      )
+      .map(({ startTime, endTime }) => ({ startTime, endTime }));
+  }
+
   private parseDate(value: string): Temporal.PlainDate {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       throw new BadRequestException('date must use YYYY-MM-DD format');
@@ -433,7 +583,10 @@ export class MateAvailabilityService {
   }
 
   private subtractIntervals(
-    window: MateAvailabilityRecord,
+    window: Pick<
+      MateAvailabilityRecord | MateAvailabilityDateOverrideSlotRecord,
+      'startTime' | 'endTime'
+    >,
     bookings: [number, number][],
   ): MateOpenInterval[] {
     const start = this.timeToMinutes(window.startTime);

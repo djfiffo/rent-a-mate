@@ -23,8 +23,12 @@ import { requireMateUserId } from '../internal/require-mate-user.js';
 import type { MateAvailabilityRecord } from '../internal/mates.types.js';
 import { CreateMateAvailabilityDto } from './dto/create-mate-availability.dto.js';
 import { ReplaceMateAvailabilityDto } from './dto/replace-mate-availability.dto.js';
+import { ReplaceMateAvailabilityDateDto } from './dto/replace-mate-availability-date.dto.js';
 import { UpdateMateAvailabilityDto } from './dto/update-mate-availability.dto.js';
-import { MateAvailabilityService } from './mate-availability.service.js';
+import {
+  MateAvailabilityService,
+  type MateAvailabilityOverride,
+} from './mate-availability.service.js';
 
 @Controller('mates')
 @UseGuards(JwtAuthGuard)
@@ -67,6 +71,46 @@ export class MateAvailabilityController {
     );
     return successResponse('Mate availability replaced', {
       slots: availability,
+    });
+  }
+
+  @Get('me/availability/dates')
+  async getDateAvailability(
+    @CurrentUser() user: AuthUser | undefined,
+  ): Promise<ApiResponse<{ overrides: MateAvailabilityOverride[] }>> {
+    const overrides = await this.mateAvailabilityService.findDateOverrides(
+      requireMateUserId(user),
+    );
+    return successResponse('Date-specific availability retrieved', {
+      overrides,
+    });
+  }
+
+  @Put('me/availability/dates/:date')
+  async replaceDateAvailability(
+    @CurrentUser() user: AuthUser | undefined,
+    @Param('date') date: string,
+    @Body() input: ReplaceMateAvailabilityDateDto,
+  ): Promise<ApiResponse<MateAvailabilityOverride>> {
+    const override = await this.mateAvailabilityService.replaceDateOverride(
+      requireMateUserId(user),
+      date,
+      input,
+    );
+    return successResponse('Date-specific availability saved', override);
+  }
+
+  @Delete('me/availability/dates/:date')
+  async clearDateAvailability(
+    @CurrentUser() user: AuthUser | undefined,
+    @Param('date') date: string,
+  ): Promise<ApiResponse<{ cleared: true }>> {
+    await this.mateAvailabilityService.removeDateOverride(
+      requireMateUserId(user),
+      date,
+    );
+    return successResponse('Date-specific availability cleared', {
+      cleared: true,
     });
   }
 

@@ -78,6 +78,8 @@ interface MateOrm {
   MateActivity: Model<{ mateId: number; activityId: number }>;
   MateInterest: Model<{ mateId: number; interestId: number }>;
   MateAvailability: Model<MateAvailabilityRecord>;
+  MateAvailabilityDateOverride: Model<MateAvailabilityDateOverrideRecord>;
+  MateAvailabilityDateOverrideSlot: Model<MateAvailabilityDateOverrideSlotRecord>;
   MatePhoto: Model<MatePhotoRecord>;
   Booking: Model<MateQueryRecord>;
 }
@@ -101,6 +103,23 @@ export interface MateAvailabilityRecord {
   id: number;
   mateId: number;
   dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  createdAt: unknown;
+  updatedAt: unknown;
+}
+
+export interface MateAvailabilityDateOverrideRecord {
+  id: number;
+  mateId: number;
+  date: string;
+  createdAt: unknown;
+  updatedAt: unknown;
+}
+
+export interface MateAvailabilityDateOverrideSlotRecord {
+  id: number;
+  overrideId: number;
   startTime: string;
   endTime: string;
   createdAt: unknown;

@@ -1,0 +1,326 @@
+[
+  {
+    "id": "table.mate_availability_date_override_slots",
+    "label": "Create table \"mate_availability_date_override_slots\"",
+    "summary": "Creates table \"mate_availability_date_override_slots\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "mate_availability_date_override_slots"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"mate_availability_date_override_slots\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"mate_availability_date_override_slots\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"mate_availability_date_override_slots\"",
+        "sql": "CREATE TABLE \"public\".\"mate_availability_date_override_slots\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"endTime\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"overrideId\" int4 NOT NULL,\n  \"startTime\" text NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"mate_availability_date_override_slots\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"mate_availability_date_override_slots\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.mate_availability_date_overrides",
+    "label": "Create table \"mate_availability_date_overrides\"",
+    "summary": "Creates table \"mate_availability_date_overrides\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "mate_availability_date_overrides"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"mate_availability_date_overrides\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"mate_availability_date_overrides\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"mate_availability_date_overrides\"",
+        "sql": "CREATE TABLE \"public\".\"mate_availability_date_overrides\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"date\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"mateId\" int4 NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"mate_availability_date_overrides\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"mate_availability_date_overrides\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.mate_availability_date_override_slots.mate_avail_date_slots_unique",
+    "label": "Add unique constraint on \"mate_availability_date_override_slots\" (overrideId, startTime, endTime)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "mate_avail_date_slots_unique",
+        "table": "mate_availability_date_override_slots"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"mate_avail_date_slots_unique\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "mate_avail_date_slots_unique",
+          "public",
+          "\"public\".\"mate_availability_date_override_slots\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"mate_avail_date_slots_unique\"",
+        "sql": "ALTER TABLE \"public\".\"mate_availability_date_override_slots\" ADD CONSTRAINT \"mate_avail_date_slots_unique\" UNIQUE (\"overrideId\", \"startTime\", \"endTime\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"mate_avail_date_slots_unique\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "mate_avail_date_slots_unique",
+          "public",
+          "\"public\".\"mate_availability_date_override_slots\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.mate_availability_date_overrides.mate_avail_overrides_date_unique",
+    "label": "Add unique constraint on \"mate_availability_date_overrides\" (mateId, date)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "mate_avail_overrides_date_unique",
+        "table": "mate_availability_date_overrides"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"mate_avail_overrides_date_unique\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "mate_avail_overrides_date_unique",
+          "public",
+          "\"public\".\"mate_availability_date_overrides\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"mate_avail_overrides_date_unique\"",
+        "sql": "ALTER TABLE \"public\".\"mate_availability_date_overrides\" ADD CONSTRAINT \"mate_avail_overrides_date_unique\" UNIQUE (\"mateId\", \"date\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"mate_avail_overrides_date_unique\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "mate_avail_overrides_date_unique",
+          "public",
+          "\"public\".\"mate_availability_date_overrides\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.mate_availability_date_override_slots.mate_avail_override_slots_override_idx",
+    "label": "Create index \"mate_avail_override_slots_override_idx\" on \"mate_availability_date_override_slots\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "mate_avail_override_slots_override_idx",
+        "table": "mate_availability_date_override_slots"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"mate_avail_override_slots_override_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"mate_avail_override_slots_override_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"mate_avail_override_slots_override_idx\"",
+        "sql": "CREATE INDEX \"mate_avail_override_slots_override_idx\" ON \"public\".\"mate_availability_date_override_slots\" (\"overrideId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"mate_avail_override_slots_override_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"mate_avail_override_slots_override_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.mate_availability_date_overrides.mate_availability_date_overrides_mateId_idx_99af79ac",
+    "label": "Create index \"mate_availability_date_overrides_mateId_idx_99af79ac\" on \"mate_availability_date_overrides\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "mate_availability_date_overrides_mateId_idx_99af79ac",
+        "table": "mate_availability_date_overrides"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"mate_availability_date_overrides_mateId_idx_99af79ac\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"mate_availability_date_overrides_mateId_idx_99af79ac\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"mate_availability_date_overrides_mateId_idx_99af79ac\"",
+        "sql": "CREATE INDEX \"mate_availability_date_overrides_mateId_idx_99af79ac\" ON \"public\".\"mate_availability_date_overrides\" (\"mateId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"mate_availability_date_overrides_mateId_idx_99af79ac\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"mate_availability_date_overrides_mateId_idx_99af79ac\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.mate_availability_date_override_slots.mate_availability_date_override_slots_overrideId_fkey",
+    "label": "Add foreign key \"mate_availability_date_override_slots_overrideId_fkey\" on \"mate_availability_date_override_slots\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "mate_availability_date_override_slots_overrideId_fkey",
+        "table": "mate_availability_date_override_slots"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"mate_availability_date_override_slots_overrideId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "mate_availability_date_override_slots_overrideId_fkey",
+          "public",
+          "\"public\".\"mate_availability_date_override_slots\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"mate_availability_date_override_slots_overrideId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"mate_availability_date_override_slots\"\nADD CONSTRAINT \"mate_availability_date_override_slots_overrideId_fkey\"\nFOREIGN KEY (\"overrideId\")\nREFERENCES \"public\".\"mate_availability_date_overrides\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"mate_availability_date_override_slots_overrideId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "mate_availability_date_override_slots_overrideId_fkey",
+          "public",
+          "\"public\".\"mate_availability_date_override_slots\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.mate_availability_date_overrides.mate_availability_date_overrides_mateId_fkey",
+    "label": "Add foreign key \"mate_availability_date_overrides_mateId_fkey\" on \"mate_availability_date_overrides\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "mate_availability_date_overrides_mateId_fkey",
+        "table": "mate_availability_date_overrides"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"mate_availability_date_overrides_mateId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "mate_availability_date_overrides_mateId_fkey",
+          "public",
+          "\"public\".\"mate_availability_date_overrides\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"mate_availability_date_overrides_mateId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"mate_availability_date_overrides\"\nADD CONSTRAINT \"mate_availability_date_overrides_mateId_fkey\"\nFOREIGN KEY (\"mateId\")\nREFERENCES \"public\".\"mate\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"mate_availability_date_overrides_mateId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "mate_availability_date_overrides_mateId_fkey",
+          "public",
+          "\"public\".\"mate_availability_date_overrides\""
+        ]
+      }
+    ]
+  }
+]
