@@ -36,6 +36,14 @@
       "model": "MateInterest",
       "namespace": "public"
     },
+    "mate_availability_date_override_slots": {
+      "model": "MateAvailabilityDateOverrideSlot",
+      "namespace": "public"
+    },
+    "mate_availability_date_overrides": {
+      "model": "MateAvailabilityDateOverride",
+      "namespace": "public"
+    },
     "mate_photos": {
       "model": "MatePhoto",
       "namespace": "public"
@@ -776,6 +784,21 @@
                   "namespace": "public"
                 }
               },
+              "availabilityOverrides": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "mateId"
+                  ]
+                },
+                "to": {
+                  "model": "MateAvailabilityDateOverride",
+                  "namespace": "public"
+                }
+              },
               "bookings": {
                 "cardinality": "1:N",
                 "on": {
@@ -1085,6 +1108,185 @@
               },
               "namespaceId": "public",
               "table": "mateAvailability"
+            }
+          },
+          "MateAvailabilityDateOverride": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "date": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "mateId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "mate": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "mateId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Mate",
+                  "namespace": "public"
+                }
+              },
+              "slots": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "overrideId"
+                  ]
+                },
+                "to": {
+                  "model": "MateAvailabilityDateOverrideSlot",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "date": {
+                  "column": "date"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "mateId": {
+                  "column": "mateId"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "mate_availability_date_overrides"
+            }
+          },
+          "MateAvailabilityDateOverrideSlot": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "endTime": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "overrideId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "startTime": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "override": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "overrideId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "MateAvailabilityDateOverride",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "endTime": {
+                  "column": "endTime"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "overrideId": {
+                  "column": "overrideId"
+                },
+                "startTime": {
+                  "column": "startTime"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "mate_availability_date_override_slots"
             }
           },
           "MateInterest": {
@@ -3128,6 +3330,179 @@
               },
               "uniques": []
             },
+            "mate_availability_date_override_slots": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "endTime": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "overrideId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "startTime": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "overrideId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "mate_availability_date_override_slots"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "mate_availability_date_overrides"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "overrideId"
+                  ],
+                  "name": "mate_avail_override_slots_override_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "overrideId",
+                    "startTime",
+                    "endTime"
+                  ],
+                  "name": "mate_avail_date_slots_unique"
+                }
+              ]
+            },
+            "mate_availability_date_overrides": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "date": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "mateId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "mateId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "mate_availability_date_overrides"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "mate"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "mateId"
+                  ],
+                  "name": "mate_availability_date_overrides_mateId_idx_99af79ac",
+                  "prefix": "mate_availability_date_overrides_mateId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "mateId",
+                    "date"
+                  ],
+                  "name": "mate_avail_overrides_date_unique"
+                }
+              ]
+            },
             "mate_photos": {
               "columns": {
                 "createdAt": {
@@ -4270,7 +4645,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "546ebb1d1bf0c8e7200ff5f2f8cd21836307622c72ca7539b92c766a7431bc5e"
+    "storageHash": "999f721e81b7177357bb4968db50328e39efbe93db624eb64bb4e6d25b9bc790"
   },
   "execution": {
     "executionHash": "2b4e697f9b65f35c454b4566842be84c3e33e81e631548370e8da60662f70ab8",
