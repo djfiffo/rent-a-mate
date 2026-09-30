@@ -176,16 +176,14 @@ describe('MateAvailabilityService', () => {
           },
           MateAvailabilityDateOverrideSlot: {
             where: vi.fn().mockReturnValue({
-              all: vi
-                .fn()
-                .mockResolvedValue([
-                  {
-                    id: 8,
-                    overrideId: 4,
-                    startTime: '13:00',
-                    endTime: '16:00',
-                  },
-                ]),
+              all: vi.fn().mockResolvedValue([
+                {
+                  id: 8,
+                  overrideId: 4,
+                  startTime: '13:00',
+                  endTime: '16:00',
+                },
+              ]),
             }),
           },
         },
