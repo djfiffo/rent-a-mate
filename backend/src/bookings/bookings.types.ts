@@ -3,7 +3,10 @@ import type {
   NotificationCreateInput,
   NotificationRecord,
 } from '../notifications/notifications.types.js';
-import type { PaymentClient } from '../payments/payments.types.js';
+import type {
+  PaymentClient,
+  PaymentStatusValue,
+} from '../payments/payments.types.js';
 import type { ReviewClient } from '../reviews/reviews.types.js';
 
 export type BookingClient = typeof db.orm.public.Booking;
@@ -120,6 +123,8 @@ export interface BookingDetail {
   renter: BookingParticipantSummary;
   mate: BookingParticipantSummary;
   activity: BookingParticipantSummary;
+  /** `null` when no payment has been started for the booking. */
+  paymentStatus: PaymentStatusValue | null;
   /**
    * `null` when the booking has no review yet — either it is not
    * `completed`, or the renter simply has not reviewed it. See
