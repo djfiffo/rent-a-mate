@@ -467,6 +467,13 @@ export class BookingsService {
       reviews.map((review) => [review.bookingId, review]),
     );
 
+    const payments = await this.database.orm.public.Payment.where((p) =>
+      p.bookingId.in(bookingIds),
+    ).all();
+    const paymentStatusByBookingId = new Map(
+      payments.map((payment) => [payment.bookingId, payment.status]),
+    );
+
     return bookings.map((booking) => {
       const mate = mateMap.get(booking.mateId);
       const mateUser = mate ? userMap.get(mate.userId) : undefined;
@@ -486,6 +493,7 @@ export class BookingsService {
         renter: { id: booking.renterId, name: renterUser?.name ?? 'Unknown' },
         mate: { id: booking.mateId, name: mateUser?.name ?? 'Unknown' },
         activity: { id: booking.activityId, name: activity?.name ?? 'Unknown' },
+        paymentStatus: paymentStatusByBookingId.get(booking.id) ?? null,
         review: review
           ? {
               id: review.id,
